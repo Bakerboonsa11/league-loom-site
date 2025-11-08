@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy } from "lucide-react";
@@ -81,6 +82,7 @@ const Standings = () => {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };

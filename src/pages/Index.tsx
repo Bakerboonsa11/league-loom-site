@@ -1,7 +1,8 @@
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Users, Calendar, TrendingUp } from "lucide-react";
+import { Trophy, Users, Calendar, TrendingUp, Star, Quote } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroBanner from "@/assets/hero-banner.jpg";
 
@@ -35,6 +36,67 @@ const Index = () => {
     { icon: Users, label: "Total Players", value: "480" },
     { icon: Calendar, label: "Matches Played", value: "156" },
     { icon: TrendingUp, label: "Season", value: "2024" },
+  ];
+
+  const testimonials = [
+    {
+      id: 1,
+      name: "Alex Chen",
+      role: "Team Captain - MIT Engineers",
+      content: "College League has transformed how we compete. The platform is seamless, and the competition level is incredible!",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80",
+      rating: 5,
+    },
+    {
+      id: 2,
+      name: "Sarah Williams",
+      role: "Player - Stanford Cardinals",
+      content: "The best collegiate esports experience. Great matches, amazing community, and professional organization.",
+      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&q=80",
+      rating: 5,
+    },
+    {
+      id: 3,
+      name: "Marcus Johnson",
+      role: "Coach - Harvard Crimson",
+      content: "As a coach, I appreciate the structured format and competitive integrity. This is the future of college esports.",
+      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&q=80",
+      rating: 5,
+    },
+  ];
+
+  const galleryImages = [
+    {
+      id: 1,
+      url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&q=80",
+      alt: "Championship Finals",
+      caption: "Championship Finals 2024",
+    },
+    {
+      id: 2,
+      url: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&q=80",
+      alt: "Team Celebration",
+      caption: "Victory Celebration",
+    },
+    {
+      id: 3,
+      url: "https://images.unsplash.com/photo-1560419015-7c427e8ae5ba?w=800&q=80",
+      alt: "Intense Match",
+      caption: "Intense Competition",
+    },
+    {
+      id: 4,
+      url: "https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?w=800&q=80",
+      alt: "Player Focus",
+      caption: "Player Focus",
+    },
+  ];
+
+  const sponsors = [
+    { name: "TechCorp", logo: "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=200&q=80" },
+    { name: "GameGear", logo: "https://images.unsplash.com/photo-1614332625556-2f61d6e3fce4?w=200&q=80" },
+    { name: "StreamPro", logo: "https://images.unsplash.com/photo-1572044162444-ad60f128bdea?w=200&q=80" },
+    { name: "EduTech", logo: "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=200&q=80" },
   ];
 
   return (
@@ -127,6 +189,125 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Gallery Section */}
+      <section className="py-16 bg-card/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4">Moments That Matter</h2>
+            <p className="text-muted-foreground text-lg">Capturing the excitement of college league</p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-6xl mx-auto">
+            {galleryImages.map((image) => (
+              <div key={image.id} className="group relative overflow-hidden rounded-lg aspect-square">
+                <img 
+                  src={image.url} 
+                  alt={image.alt}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <p className="text-white font-semibold">{image.caption}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4">What Players Say</h2>
+            <p className="text-muted-foreground text-lg">Hear from our community members</p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {testimonials.map((testimonial) => (
+              <Card key={testimonial.id} className="relative overflow-hidden hover:shadow-glow-primary transition-shadow">
+                <Quote className="absolute top-4 right-4 w-8 h-8 text-primary/20" />
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <img 
+                      src={testimonial.avatar} 
+                      alt={testimonial.name}
+                      className="w-12 h-12 rounded-full object-cover border-2 border-primary"
+                    />
+                    <div>
+                      <h3 className="font-semibold">{testimonial.name}</h3>
+                      <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-1 mb-3">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-primary text-primary" />
+                    ))}
+                  </div>
+                  <p className="text-muted-foreground">{testimonial.content}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Sponsors Section */}
+      <section className="py-16 bg-card/30 border-y border-border">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl font-bold mb-2">Our Partners</h2>
+            <p className="text-muted-foreground">Trusted by leading brands in esports and education</p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto items-center">
+            {sponsors.map((sponsor, index) => (
+              <div 
+                key={index} 
+                className="flex items-center justify-center p-6 bg-background rounded-lg hover:shadow-lg transition-shadow grayscale hover:grayscale-0"
+              >
+                <img 
+                  src={sponsor.logo} 
+                  alt={sponsor.name}
+                  className="w-full h-12 object-contain opacity-60 hover:opacity-100 transition-opacity"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center space-y-6 bg-gradient-primary rounded-2xl p-12 shadow-glow-primary">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground">
+              Ready to Join the Competition?
+            </h2>
+            <p className="text-lg text-primary-foreground/90">
+              Be part of the most exciting collegiate esports league. Register your team today!
+            </p>
+            <div className="flex flex-wrap gap-4 justify-center pt-4">
+              <Link to="/auth">
+                <Button size="lg" variant="secondary" className="shadow-lg">
+                  Get Started
+                </Button>
+              </Link>
+              <Link to="/teams">
+                <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10">
+                  View Teams
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
     </div>
   );
 };

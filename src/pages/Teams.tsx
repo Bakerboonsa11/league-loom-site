@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Trophy } from "lucide-react";
@@ -80,6 +81,7 @@ const Teams = () => {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };
