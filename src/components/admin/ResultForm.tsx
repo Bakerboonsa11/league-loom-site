@@ -11,7 +11,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { getFirestore, doc, setDoc, addDoc, collection, getDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, serverTimestamp, DocumentReference } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 const db = getFirestore();
@@ -45,48 +45,88 @@ const ResultForm = ({ gameId, onFinished }: ResultFormProps) => {
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const {
+      homeScore,
+      awayScore,
+      homeYellowCards,
+      awayYellowCards,
+      homeRedCards,
+      awayRedCards,
+    } = values;
+
     try {
-      // Calculate points
       let homePoints = 0;
       let awayPoints = 0;
-      if (values.homeScore > values.awayScore) {
+      if (homeScore > awayScore) {
         homePoints = 3;
-      } else if (values.homeScore < values.awayScore) {
+      } else if (homeScore < awayScore) {
         awayPoints = 3;
       } else {
         homePoints = 1;
         awayPoints = 1;
       }
 
-      // Get team references from the game document
       const gameRef = doc(db, "games", gameId);
       const gameSnap = await getDoc(gameRef);
       if (!gameSnap.exists()) {
         throw new Error("Game not found!");
       }
-      const gameData = gameSnap.data();
 
-      // Create a new document in the 'results' collection
-      const resultsCollection = collection(db, "results");
-      await addDoc(resultsCollection, {
-        gameRef: gameRef,
-        homeTeamRef: gameData.team1,
-        awayTeamRef: gameData.team2,
-        homeScore: values.homeScore,
-        awayScore: values.awayScore,
+      const { team1, team2 } = gameSnap.data() as {
+        team1?: DocumentReference;
+        team2?: DocumentReference;
+      };
+
+      if (!team1 || !team2) {
+        throw new Error("Game document is missing team references!");
+      }
+
+      const homeTeamRef = team1;
+      const awayTeamRef = team2;
+
+      const resultRef = doc(db, "results", gameId);
+      const existingResultSnap = await getDoc(resultRef);
+      const timestamp = serverTimestamp();
+
+      const baseResultData = {
+        gameId,
+        gameRef,
+        homeTeamRef,
+        awayTeamRef,
+        homeTeamId: homeTeamRef.id,
+        awayTeamId: awayTeamRef.id,
+        homeScore,
+        awayScore,
         homePoints,
         awayPoints,
-        homeYellowCards: values.homeYellowCards,
-        awayYellowCards: values.awayYellowCards,
-        homeRedCards: values.homeRedCards,
-        awayRedCards: values.awayRedCards,
-        createdAt: new Date(),
+        homeYellowCards,
+        awayYellowCards,
+        homeRedCards,
+        awayRedCards,
+        homeGoalDifference: homeScore - awayScore,
+        awayGoalDifference: awayScore - homeScore,
+        updatedAt: timestamp,
+      };
+
+      const resultData = existingResultSnap.exists()
+        ? baseResultData
+        : { ...baseResultData, createdAt: timestamp };
+
+      await setDoc(resultRef, resultData, { merge: true });
+
+      await setDoc(
+        gameRef,
+        {
+          status: "Finished",
+          resultRef,
+        },
+        { merge: true },
+      );
+
+      toast({
+        title: "Result saved",
+        description: "The game result has been successfully recorded.",
       });
-
-      // Update the game status to 'Finished'
-      await setDoc(gameRef, { status: "Finished" }, { merge: true });
-
-      toast({ title: "Result added", description: "The game result has been successfully added." });
       onFinished();
     } catch (error) {
       console.error("Error adding result:", error);

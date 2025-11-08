@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getFirestore, collection, getDocs, DocumentReference } from "firebase/firestore";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { auth } from "@/firebase";
 import {
   Table,
@@ -18,13 +18,19 @@ interface Team {
   name: string;
 }
 
-interface Result {
-  homeTeamRef: DocumentReference;
-  awayTeamRef: DocumentReference;
+interface ResultDoc {
+  homeTeamId: string;
+  awayTeamId: string;
   homeScore: number;
   awayScore: number;
   homePoints: number;
   awayPoints: number;
+  homeYellowCards?: number;
+  awayYellowCards?: number;
+  homeRedCards?: number;
+  awayRedCards?: number;
+  homeGoalDifference?: number;
+  awayGoalDifference?: number;
 }
 
 interface Standings {
@@ -72,32 +78,31 @@ const TableRankPage = () => {
 
         const resultsCollection = collection(db, "results");
         const resultsSnapshot = await getDocs(resultsCollection);
-        const results: Result[] = resultsSnapshot.docs.map(doc => doc.data() as Result);
+        const results: ResultDoc[] = resultsSnapshot.docs.map(doc => doc.data() as ResultDoc);
 
         results.forEach(result => {
-          const homeTeamId = result.homeTeamRef.id;
-          const awayTeamId = result.awayTeamRef.id;
+          const { homeTeamId, awayTeamId, homeScore, awayScore, homePoints, awayPoints } = result;
 
           if (initialStandings[homeTeamId]) {
             initialStandings[homeTeamId].played += 1;
-            initialStandings[homeTeamId].won += result.homePoints === 3 ? 1 : 0;
-            initialStandings[homeTeamId].drawn += result.homePoints === 1 ? 1 : 0;
-            initialStandings[homeTeamId].lost += result.homePoints === 0 ? 1 : 0;
-            initialStandings[homeTeamId].gf += result.homeScore;
-            initialStandings[homeTeamId].ga += result.awayScore;
-            initialStandings[homeTeamId].gd += result.homeScore - result.awayScore;
-            initialStandings[homeTeamId].points += result.homePoints;
+            initialStandings[homeTeamId].won += homePoints === 3 ? 1 : 0;
+            initialStandings[homeTeamId].drawn += homePoints === 1 ? 1 : 0;
+            initialStandings[homeTeamId].lost += homePoints === 0 ? 1 : 0;
+            initialStandings[homeTeamId].gf += homeScore;
+            initialStandings[homeTeamId].ga += awayScore;
+            initialStandings[homeTeamId].gd += homeScore - awayScore;
+            initialStandings[homeTeamId].points += homePoints;
           }
 
           if (initialStandings[awayTeamId]) {
             initialStandings[awayTeamId].played += 1;
-            initialStandings[awayTeamId].won += result.awayPoints === 3 ? 1 : 0;
-            initialStandings[awayTeamId].drawn += result.awayPoints === 1 ? 1 : 0;
-            initialStandings[awayTeamId].lost += result.awayPoints === 0 ? 1 : 0;
-            initialStandings[awayTeamId].gf += result.awayScore;
-            initialStandings[awayTeamId].ga += result.homeScore;
-            initialStandings[awayTeamId].gd += result.awayScore - result.homeScore;
-            initialStandings[awayTeamId].points += result.awayPoints;
+            initialStandings[awayTeamId].won += awayPoints === 3 ? 1 : 0;
+            initialStandings[awayTeamId].drawn += awayPoints === 1 ? 1 : 0;
+            initialStandings[awayTeamId].lost += awayPoints === 0 ? 1 : 0;
+            initialStandings[awayTeamId].gf += awayScore;
+            initialStandings[awayTeamId].ga += homeScore;
+            initialStandings[awayTeamId].gd += awayScore - homeScore;
+            initialStandings[awayTeamId].points += awayPoints;
           }
         });
 
