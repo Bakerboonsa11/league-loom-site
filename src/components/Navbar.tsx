@@ -50,6 +50,15 @@ const Navbar = () => {
                 {item.label}
               </NavLink>
             ))}
+            {user && (
+              <NavLink
+                to="/dashboard"
+                className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                activeClassName="text-primary"
+              >
+                Dashboard
+              </NavLink>
+            )}
             
             {user ? (
               <div className="flex items-center gap-3">
@@ -95,6 +104,16 @@ const Navbar = () => {
                   {item.label}
                 </NavLink>
               ))}
+              {user && (
+                <NavLink
+                  to="/dashboard"
+                  className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-1"
+                  activeClassName="text-primary"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Dashboard
+                </NavLink>
+              )}
               
               <div className="border-t border-border pt-4 mt-2">
                 {user ? (

@@ -14,14 +14,39 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   
   const { login, signup } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(String(email).toLowerCase());
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
+
+    if (!isLogin && name.trim() === "") {
+      setError("Full Name is required.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError("Invalid email address.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       if (isLogin) {
@@ -31,19 +56,32 @@ const Auth = () => {
           description: "You've successfully logged in.",
         });
       } else {
-        await signup(email, password, name);
+        await signup(email, password, name, "student");
         toast({
           title: "Account created!",
           description: "Welcome to College League.",
         });
       }
-      navigate("/");
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Something went wrong",
-        variant: "destructive",
-      });
+      navigate("/dashboard");
+    } catch (err) {
+      let message = "An unexpected error occurred. Please try again.";
+      if (err instanceof Error && 'code' in err) {
+        const firebaseError = err as { code: string; message: string };
+        switch (firebaseError.code) {
+          case "auth/email-already-in-use":
+            message = "This email is already registered. Please sign in or use a different email.";
+            break;
+          case "auth/wrong-password":
+            message = "Incorrect password. Please try again.";
+            break;
+          case "auth/user-not-found":
+            message = "No account found with this email. Please sign up.";
+            break;
+          default:
+            message = firebaseError.message;
+        }
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -120,6 +158,8 @@ const Auth = () => {
                   />
                 </div>
               </div>
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
 
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
