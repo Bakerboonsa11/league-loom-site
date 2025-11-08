@@ -1,16 +1,28 @@
 import { NavLink } from "@/components/NavLink";
-import { Trophy, Menu, X } from "lucide-react";
+import { Trophy, Menu, X, LogOut, User } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+    setIsMenuOpen(false);
+  };
 
   const navItems = [
     { to: "/", label: "Home" },
     { to: "/teams", label: "Teams" },
     { to: "/matches", label: "Matches" },
     { to: "/standings", label: "Standings" },
+    { to: "/blog", label: "Blog" },
+    { to: "/vlog", label: "Vlog" },
   ];
 
   return (
@@ -26,7 +38,7 @@ const Navbar = () => {
           </NavLink>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-6">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
@@ -38,6 +50,23 @@ const Navbar = () => {
                 {item.label}
               </NavLink>
             ))}
+            
+            {user ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="w-4 h-4" />
+                  <span>{user.name}</span>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <Button variant="default" size="sm" onClick={() => navigate("/auth")}>
+                Sign In
+              </Button>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -66,6 +95,25 @@ const Navbar = () => {
                   {item.label}
                 </NavLink>
               ))}
+              
+              <div className="border-t border-border pt-4 mt-2">
+                {user ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
+                      <User className="w-4 h-4" />
+                      <span>{user.name}</span>
+                    </div>
+                    <Button variant="outline" className="w-full" onClick={handleLogout}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="default" className="w-full" onClick={() => { navigate("/auth"); setIsMenuOpen(false); }}>
+                    Sign In
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}
