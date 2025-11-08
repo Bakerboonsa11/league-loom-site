@@ -2,7 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Link } from "react-router-dom";
-import { Users, Gamepad2, BarChart3, Video, FileText, Shield, User, UserCheck, Eye } from "lucide-react";
+import { Users, Gamepad2, BarChart3, Video, FileText, Shield, User, UserCheck, Eye, Layers } from "lucide-react";
 import { motion } from "framer-motion";
 
 const data = [
@@ -34,6 +34,7 @@ const itemVariants = {
 
 const AdminDashboard = () => {
   const quickActions = [
+    { to: "/admin/group", icon: <Layers className="h-5 w-5" />, label: "Create Group" },
     { to: "/admin/users", icon: <Users className="h-5 w-5" />, label: "Users" },
     { to: "/admin/games", icon: <Gamepad2 className="h-5 w-5" />, label: "Games" },
     { to: "/admin/table-rank", icon: <BarChart3 className="h-5 w-5" />, label: "Table Rank" },
