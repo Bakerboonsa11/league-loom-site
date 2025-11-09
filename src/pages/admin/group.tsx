@@ -28,9 +28,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/firebase";
 
@@ -69,6 +78,10 @@ const AdminGroupPage = () => {
   const [editingGroup, setEditingGroup] = useState<GroupSummary | null>(null);
   const [savingTeamId, setSavingTeamId] = useState<string | null>(null);
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  const [pendingTeamSelection, setPendingTeamSelection] = useState<{
+    team: TeamOption;
+    nextValue: string[];
+  } | null>(null);
 
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupSchema),
@@ -78,6 +91,60 @@ const AdminGroupPage = () => {
       teamIds: [],
     },
   });
+
+  const groupNameLookup = useMemo(() => {
+    const map = new Map<string, string>();
+    groups.forEach((group) => map.set(group.id, group.name));
+    return map;
+  }, [groups]);
+
+  const cancelPendingTeamSelection = useCallback(() => {
+    setPendingTeamSelection(null);
+  }, []);
+
+  const handleTeamCheckboxChange = useCallback(
+    (
+      team: TeamOption,
+      checkedValue: boolean | "indeterminate",
+      currentValue: string[],
+      options: { allowReassign?: boolean } = {},
+    ) => {
+      const isChecked = checkedValue === true;
+
+      if (isChecked) {
+        const nextValue = currentValue.includes(team.id) ? currentValue : [...currentValue, team.id];
+
+        if (team.groupId && team.groupId !== editingGroup?.id) {
+          if (!options.allowReassign) {
+            setPendingTeamSelection({ team, nextValue });
+            return;
+          }
+
+          void handleMoveTeam(team.id, editingGroup?.id ?? null).then(() => {
+            form.setValue("teamIds", nextValue, { shouldDirty: true });
+          });
+          return;
+        }
+
+        form.setValue("teamIds", nextValue, { shouldDirty: true });
+        return;
+      }
+
+      const nextValue = currentValue.filter((id) => id !== team.id);
+      form.setValue("teamIds", nextValue, { shouldDirty: true });
+    },
+    [editingGroup, form],
+  );
+
+  const confirmPendingTeamSelection = useCallback(() => {
+    if (!pendingTeamSelection) {
+      return;
+    }
+
+    const currentIds = form.getValues("teamIds");
+    handleTeamCheckboxChange(pendingTeamSelection.team, true, currentIds, { allowReassign: true });
+    setPendingTeamSelection(null);
+  }, [form, handleTeamCheckboxChange, pendingTeamSelection]);
 
   const refreshTeams = useCallback(async () => {
     setIsLoadingTeams(true);
@@ -161,7 +228,7 @@ const AdminGroupPage = () => {
   const handleSubmit = async (values: GroupFormValues) => {
     try {
       const timestamp = serverTimestamp();
-      await addDoc(collection(db, "groups"), {
+      const newGroupRef = await addDoc(collection(db, "groups"), {
         name: values.name,
         description: values.description ?? null,
         teamIds: values.teamIds,
@@ -170,9 +237,26 @@ const AdminGroupPage = () => {
         updatedAt: timestamp,
       });
 
+      await Promise.all(
+        values.teamIds.map(async (teamId) => {
+          const teamRef = doc(db, "teams", teamId);
+          const existingTeam = teams.find((team) => team.id === teamId);
+          const previousGroupId = existingTeam?.groupId ?? null;
+
+          if (previousGroupId && previousGroupId !== newGroupRef.id) {
+            await updateDoc(doc(db, "groups", previousGroupId), {
+              teamIds: arrayRemove(teamId),
+              updatedAt: serverTimestamp(),
+            });
+          }
+
+          await setDoc(teamRef, { groupId: newGroupRef.id }, { merge: true });
+        }),
+      );
+
       toast({ title: "Group created", description: "Group has been saved successfully." });
       form.reset({ name: "", description: "", teamIds: [] });
-      await refreshGroups();
+      await Promise.all([refreshGroups(), refreshTeams()]);
     } catch (error) {
       console.error("Failed to create group", error);
       toast({
@@ -300,26 +384,40 @@ const AdminGroupPage = () => {
                             ) : sortedTeams.length === 0 ? (
                               <p className="text-sm text-muted-foreground">No teams available.</p>
                             ) : (
-                              sortedTeams.map((team) => (
-                                <label key={team.id} className="flex items-center gap-2 text-sm">
-                                  <Checkbox
-                                    checked={field.value.includes(team.id)}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        field.onChange([...field.value, team.id]);
-                                      } else {
-                                        field.onChange(field.value.filter((id) => id !== team.id));
+                              sortedTeams.map((team) => {
+                                const existingGroupName = team.groupId
+                                  ? groupNameLookup.get(team.groupId) ?? "Another group"
+                                  : null;
+                                const isDifferentGroup = team.groupId && team.groupId !== editingGroup?.id;
+
+                                return (
+                                  <label key={team.id} className="flex items-center gap-2 text-sm">
+                                    <Checkbox
+                                      checked={field.value.includes(team.id)}
+                                      onCheckedChange={(checked) =>
+                                        handleTeamCheckboxChange(team, checked, field.value)
                                       }
-                                    }}
-                                  />
-                                  <span className="flex flex-col">
-                                    <span>{team.name}</span>
-                                    {team.collegeName && (
-                                      <span className="text-xs text-muted-foreground">{team.collegeName}</span>
-                                    )}
-                                  </span>
-                                </label>
-                              ))
+                                    />
+                                    <span className="flex flex-col">
+                                      <span>{team.name}</span>
+                                      {team.collegeName ? (
+                                        <span className="text-xs text-muted-foreground">{team.collegeName}</span>
+                                      ) : null}
+                                      {existingGroupName ? (
+                                        <span
+                                          className={`text-xs ${
+                                            isDifferentGroup ? "text-destructive" : "text-muted-foreground"
+                                          }`}
+                                        >
+                                          {isDifferentGroup
+                                            ? `Currently in ${existingGroupName}`
+                                            : `Assigned to ${existingGroupName}`}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  </label>
+                                );
+                              })
                             )}
                           </div>
                         </ScrollArea>
@@ -344,6 +442,27 @@ const AdminGroupPage = () => {
           </Form>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!pendingTeamSelection} onOpenChange={(open) => !open && cancelPendingTeamSelection()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Team already assigned</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingTeamSelection?.team && pendingTeamSelection.team.groupId
+                ? `${pendingTeamSelection.team.name} is currently in ${
+                    groupNameLookup.get(pendingTeamSelection.team.groupId) ?? "another group"
+                  }. Do you want to remove them from that group and add them here?`
+                : "This team is already assigned to another group. Move it here instead?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelPendingTeamSelection}>No, keep current group</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmPendingTeamSelection} disabled={savingTeamId === pendingTeamSelection?.team.id}>
+              Yes, move team
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Card>
         <CardHeader>
