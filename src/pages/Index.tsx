@@ -215,47 +215,42 @@ const Index = () => {
   const testimonials = [
     {
       id: 1,
-      name: "Bonsa",
-      role: "Admin",
-      content:
-        "College League is an amazing platform for managing college esports. The admin dashboard is intuitive and powerful!",
+      name: "Bonsa Tadesse",
+      role: "Winger, Haramaya Men’s Football",
+      content: "As a touchline threat, I study defensive gaps and finishing clips on League Loom before every Hornets derby night.",
       avatar: "/bonsa.jpg",
       rating: 5,
     },
     {
       id: 2,
-      name: "Barni",
-      role: "College Head - State University",
-      content:
-        "The team management features are top-notch. I can easily keep track of my college's teams and their performance.",
+      name: "Barni Alemu",
+      role: "Midfielder, Haramaya Men’s Football",
+      content: "The lads keep our midfield shape sharp with shared scouting clips and fixture reminders right inside the platform.",
       avatar: "/barni.jpg",
       rating: 5,
     },
     {
-      id: 4,
-      name: "Naba",
-      role: "Player - Tech University",
-      content:
-        "The game management system is very efficient. It's easy to find matches and track our progress.",
+      id: 3,
+      name: "Anaba Hussein",
+      role: "Libero, Hornet Futsal",
+      content: "I organise the back line by reviewing opponent movement and set-piece plans between lectures on my phone.",
       avatar: "/naba.jpg",
       rating: 5,
     },
     {
-      id: 5,
-      name: "Kiya",
-      role: "Student - University of Arts",
-      content:
-        "The platform's design is sleek and user-friendly. It makes navigating through matches and teams a breeze!",
+      id: 4,
+      name: "Kiya Dawit",
+      role: "Midfielder, Haramaya Women’s Football",
+      content: "Match recaps, training slots, and campus shout-outs all live here—perfect for keeping our engine room connected.",
       avatar: "/kiya.jpg",
       rating: 4,
     },
     {
-      id: 6,
-      name: "Tade",
-      role: "Coach - National University",
-      content:
-        "As a coach, the ability to track team performance and manage rosters efficiently is invaluable. Highly recommended!",
-      avatar: "/tade.jpg",
+      id: 5,
+      name: "Tade Bekele",
+      role: "Goalkeeper, Haramaya Men’s Football",
+      content: "League Loom’s alerts and film breakdowns help me prep for penalty saves and command the box with confidence.",
+      avatar: "https://res.cloudinary.com/dg2kyhuh0/image/upload/v1731001234/league-loom/testimonial-coach.png",
       rating: 5,
     },
   ];
@@ -273,7 +268,7 @@ const Index = () => {
       
       {/* Hero Section */}
       <section className="relative pt-16 overflow-hidden">
-        <div 
+        <div
           className="absolute inset-0 z-0"
           style={{
             backgroundImage: `url(${heroBanner})`,
@@ -283,7 +278,7 @@ const Index = () => {
         >
           <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
         </div>
-        
+
         <div className="relative z-10 container mx-auto px-4 py-24 md:py-32">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent animate-float">

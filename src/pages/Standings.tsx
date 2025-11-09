@@ -36,6 +36,7 @@ interface ResultDoc {
 interface StandingRow {
   teamId: string;
   teamName: string;
+  teamLogo?: string | null;
   played: number;
   won: number;
   drawn: number;
@@ -101,10 +102,12 @@ const Standings = () => {
           const teamIds = group.teamIds ?? [];
           const rows: Record<string, StandingRow> = {};
           teamIds.forEach((teamId) => {
-            const teamName = teamMap.get(teamId)?.name ?? teamId;
+            const teamInfo = teamMap.get(teamId);
+            const teamName = teamInfo?.name ?? teamId;
             rows[teamId] = {
               teamId,
               teamName,
+              teamLogo: teamInfo?.logoUrl ?? null,
               played: 0,
               won: 0,
               drawn: 0,
@@ -128,10 +131,12 @@ const Standings = () => {
             return undefined;
           }
           if (!container.rows[teamId]) {
-            const teamName = teamMap.get(teamId)?.name ?? teamId;
+            const teamInfo = teamMap.get(teamId);
+            const teamName = teamInfo?.name ?? teamId;
             container.rows[teamId] = {
               teamId,
               teamName,
+              teamLogo: teamInfo?.logoUrl ?? null,
               played: 0,
               won: 0,
               drawn: 0,
@@ -148,10 +153,12 @@ const Standings = () => {
         const overallRows: Record<string, StandingRow> = {};
         const ensureOverallRow = (teamId: string) => {
           if (!overallRows[teamId]) {
-            const teamName = teamMap.get(teamId)?.name ?? teamId;
+            const teamInfo = teamMap.get(teamId);
+            const teamName = teamInfo?.name ?? teamId;
             overallRows[teamId] = {
               teamId,
               teamName,
+              teamLogo: teamInfo?.logoUrl ?? null,
               played: 0,
               won: 0,
               drawn: 0,
@@ -331,7 +338,7 @@ const Standings = () => {
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    <div className="grid grid-cols-11 gap-4 p-4 bg-muted/20 border-b border-border font-semibold text-muted-foreground">
+                    <div className="hidden md:grid md:grid-cols-11 gap-4 p-4 bg-muted/20 border-b border-border font-semibold text-muted-foreground">
                       <div>Rank</div>
                       <div className="col-span-2">Team</div>
                       <div className="text-center">P</div>
@@ -346,30 +353,53 @@ const Standings = () => {
                     {group.rows.map((team, index) => (
                       <div
                         key={team.teamId}
-                        className={`grid grid-cols-11 gap-4 p-4 hover:bg-muted/20 transition-colors ${
+                        className={`p-4 hover:bg-muted/20 transition-colors ${
                           index === 0 ? "bg-primary/5" : ""
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-lg">{index + 1}</span>
-                          {index === 0 && <Trophy className="w-5 h-5 text-secondary" />}
+                        <div className="grid md:grid-cols-11 md:gap-4 items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-lg">{index + 1}</span>
+                            {index === 0 && <Trophy className="w-5 h-5 text-secondary" />}
+                          </div>
+                          <div className="md:col-span-2 flex items-center gap-3 font-semibold">
+                            {team.teamLogo ? (
+                              <img
+                                src={team.teamLogo}
+                                alt={team.teamName}
+                                className="h-9 w-9 rounded-full object-cover border border-border"
+                              />
+                            ) : (
+                              <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
+                                {team.teamName.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            <span>{team.teamName}</span>
+                            {index < 3 && (
+                              <Badge variant="secondary" className="text-xs">
+                                Top {index + 1}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="hidden md:block text-center font-semibold text-primary">{team.played}</div>
+                          <div className="hidden md:block text-center text-muted-foreground">{team.won}</div>
+                          <div className="hidden md:block text-center text-muted-foreground">{team.drawn}</div>
+                          <div className="hidden md:block text-center text-muted-foreground">{team.lost}</div>
+                          <div className="hidden md:block text-center text-muted-foreground">{team.gf}</div>
+                          <div className="hidden md:block text-center text-muted-foreground">{team.ga}</div>
+                          <div className="hidden md:block text-center text-muted-foreground">{team.gd}</div>
+                          <div className="hidden md:block text-center font-bold text-accent">{team.points}</div>
                         </div>
-                        <div className="col-span-2 flex items-center gap-2 font-semibold">
-                          {team.teamName}
-                          {index < 3 && (
-                            <Badge variant="secondary" className="text-xs">
-                              Top {index + 1}
-                            </Badge>
-                          )}
+                        <div className="mt-3 grid grid-cols-4 gap-3 text-sm text-muted-foreground md:hidden">
+                          <div className="flex justify-between"><span>P</span><span className="font-medium text-foreground">{team.played}</span></div>
+                          <div className="flex justify-between"><span>W</span><span className="font-medium text-foreground">{team.won}</span></div>
+                          <div className="flex justify-between"><span>D</span><span className="font-medium text-foreground">{team.drawn}</span></div>
+                          <div className="flex justify-between"><span>L</span><span className="font-medium text-foreground">{team.lost}</span></div>
+                          <div className="flex justify-between"><span>GF</span><span className="font-medium text-foreground">{team.gf}</span></div>
+                          <div className="flex justify-between"><span>GA</span><span className="font-medium text-foreground">{team.ga}</span></div>
+                          <div className="flex justify-between"><span>GD</span><span className="font-medium text-foreground">{team.gd}</span></div>
+                          <div className="flex justify-between"><span>Pts</span><span className="font-semibold text-primary">{team.points}</span></div>
                         </div>
-                        <div className="text-center font-semibold text-primary">{team.played}</div>
-                        <div className="text-center text-muted-foreground">{team.won}</div>
-                        <div className="text-center text-muted-foreground">{team.drawn}</div>
-                        <div className="text-center text-muted-foreground">{team.lost}</div>
-                        <div className="text-center text-muted-foreground">{team.gf}</div>
-                        <div className="text-center text-muted-foreground">{team.ga}</div>
-                        <div className="text-center text-muted-foreground">{team.gd}</div>
-                        <div className="text-center font-bold text-accent">{team.points}</div>
                       </div>
                     ))}
                   </div>
