@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,30 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { getFirestore, doc, setDoc, getDoc, serverTimestamp, DocumentReference } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp,
+  DocumentReference,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  deleteDoc,
+} from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const db = getFirestore();
+
+const goalSchema = z.object({
+  team: z.enum(["home", "away"]),
+  scorerName: z.string().min(1, "Scorer name is required"),
+  scorerId: z.string().min(1, "Scorer ID is required"),
+});
 
 const formSchema = z.object({
   homeScore: z.coerce.number().min(0),
@@ -23,14 +43,26 @@ const formSchema = z.object({
   awayYellowCards: z.coerce.number().min(0),
   homeRedCards: z.coerce.number().min(0),
   awayRedCards: z.coerce.number().min(0),
+  goals: z.array(goalSchema),
 });
 
 interface ResultFormProps {
   gameId: string;
   onFinished: () => void;
+  gameCollection?: string;
+  resultCollection?: string;
+  goalsCollection?: string;
+  matchContext?: string;
 }
 
-const ResultForm = ({ gameId, onFinished }: ResultFormProps) => {
+const ResultForm = ({
+  gameId,
+  onFinished,
+  gameCollection = "games",
+  resultCollection = "results",
+  goalsCollection = "goals",
+  matchContext,
+}: ResultFormProps) => {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -41,18 +73,41 @@ const ResultForm = ({ gameId, onFinished }: ResultFormProps) => {
       awayYellowCards: 0,
       homeRedCards: 0,
       awayRedCards: 0,
+      goals: [],
     },
+  });
+  const { fields: goalFields, append: appendGoal, remove: removeGoal } = useFieldArray({
+    control: form.control,
+    name: "goals",
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const {
-      homeScore,
-      awayScore,
-      homeYellowCards,
-      awayYellowCards,
-      homeRedCards,
-      awayRedCards,
-    } = values;
+    const { goals, homeScore, awayScore, homeYellowCards, awayYellowCards, homeRedCards, awayRedCards } = values;
+
+    const normalizedGoals = goals.map((goal) => ({
+      ...goal,
+      scorerName: goal.scorerName.trim(),
+      scorerId: goal.scorerId.trim(),
+    }));
+
+    const uniqueScorerIds = Array.from(new Set(normalizedGoals.map((goal) => goal.scorerId).filter((id) => id.length > 0)));
+
+    const scorerPhotoMap = new Map<string, string>();
+    for (let i = 0; i < uniqueScorerIds.length; i += 10) {
+      const chunk = uniqueScorerIds.slice(i, i + 10);
+      try {
+        const scorerQuery = query(collection(db, "users"), where("userId", "in", chunk));
+        const snapshot = await getDocs(scorerQuery);
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() as { userId?: string; photoUrl?: string };
+          if (data.userId && data.photoUrl) {
+            scorerPhotoMap.set(data.userId, data.photoUrl);
+          }
+        });
+      } catch (error) {
+        console.warn("Unable to fetch scorer avatars", error, { chunk });
+      }
+    }
 
     try {
       let homePoints = 0;
@@ -66,7 +121,7 @@ const ResultForm = ({ gameId, onFinished }: ResultFormProps) => {
         awayPoints = 1;
       }
 
-      const gameRef = doc(db, "games", gameId);
+      const gameRef = doc(db, gameCollection, gameId);
       const gameSnap = await getDoc(gameRef);
       if (!gameSnap.exists()) {
         throw new Error("Game not found!");
@@ -84,7 +139,7 @@ const ResultForm = ({ gameId, onFinished }: ResultFormProps) => {
       const homeTeamRef = team1;
       const awayTeamRef = team2;
 
-      const resultRef = doc(db, "results", gameId);
+      const resultRef = doc(db, resultCollection, gameId);
       const existingResultSnap = await getDoc(resultRef);
       const timestamp = serverTimestamp();
 
@@ -122,6 +177,43 @@ const ResultForm = ({ gameId, onFinished }: ResultFormProps) => {
         },
         { merge: true },
       );
+
+      const goalsCollectionRef = collection(db, goalsCollection);
+      const existingGoalsSnap = await getDocs(query(goalsCollectionRef, where("gameId", "==", gameId)));
+      if (!existingGoalsSnap.empty) {
+        await Promise.all(existingGoalsSnap.docs.map((docSnap) => deleteDoc(docSnap.ref)));
+      }
+
+      if (normalizedGoals.length > 0) {
+        await Promise.all(
+          normalizedGoals.map((goal) => {
+            const isHomeGoal = goal.team === "home";
+            const teamRef = isHomeGoal ? homeTeamRef : awayTeamRef;
+            const scorerPhotoUrl = scorerPhotoMap.get(goal.scorerId);
+            const goalPayload: Record<string, unknown> = {
+              gameId,
+              resultId: resultRef.id,
+              teamSide: goal.team,
+              teamRef,
+              teamId: teamRef.id,
+              scorerName: goal.scorerName,
+              scorerId: goal.scorerId,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            };
+
+            if (scorerPhotoUrl) {
+              goalPayload.scorerPhotoUrl = scorerPhotoUrl;
+            }
+
+            if (matchContext) {
+              goalPayload.matchContext = matchContext;
+            }
+
+            return addDoc(goalsCollectionRef, goalPayload);
+          }),
+        );
+      }
 
       toast({
         title: "Result saved",
@@ -224,6 +316,74 @@ const ResultForm = ({ gameId, onFinished }: ResultFormProps) => {
               </FormItem>
             )}
           />
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <FormLabel>Goals</FormLabel>
+            <Button type="button" variant="outline" onClick={() => appendGoal({ team: "home", scorerName: "", scorerId: "" })}>
+              Add Goal
+            </Button>
+          </div>
+          {goalFields.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No goals recorded yet.</p>
+          ) : (
+            goalFields.map((field, index) => (
+              <div key={field.id} className="grid gap-3 md:grid-cols-4 md:items-end">
+                <FormField
+                  control={form.control}
+                  name={`goals.${index}.team`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Team</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select team" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="home">Home</SelectItem>
+                          <SelectItem value="away">Away</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`goals.${index}.scorerName`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Scorer name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Player name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`goals.${index}.scorerId`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Scorer ID</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Player ID" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end md:justify-start">
+                  <Button type="button" variant="destructive" onClick={() => removeGoal(index)}>
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
         <Button type="submit" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? "Saving..." : "Save Result"}

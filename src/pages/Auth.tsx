@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trophy, Mail, Lock, User } from "lucide-react";
+import { Trophy, Mail, Lock, User, IdCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Auth = () => {
@@ -13,6 +13,9 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [college, setCollege] = useState("");
+  const [department, setDepartment] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   
@@ -32,6 +35,12 @@ const Auth = () => {
 
     if (!isLogin && name.trim() === "") {
       setError("Full Name is required.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!isLogin && studentId.trim() === "") {
+      setError("ID is required.");
       setIsLoading(false);
       return;
     }
@@ -56,7 +65,7 @@ const Auth = () => {
           description: "You've successfully logged in.",
         });
       } else {
-        await signup(email, password, name, "student");
+        await signup(email, password, name, "student", studentId.trim(), college.trim(), department.trim());
         toast({
           title: "Account created!",
           description: "Welcome to College League.",
@@ -65,7 +74,7 @@ const Auth = () => {
       navigate("/dashboard");
     } catch (err) {
       let message = "An unexpected error occurred. Please try again.";
-      if (err instanceof Error && 'code' in err) {
+      if (err instanceof Error && "code" in err) {
         const firebaseError = err as { code: string; message: string };
         switch (firebaseError.code) {
           case "auth/email-already-in-use":
@@ -76,6 +85,9 @@ const Auth = () => {
             break;
           case "auth/user-not-found":
             message = "No account found with this email. Please sign up.";
+            break;
+          case "auth/user-id-already-in-use":
+            message = "This student ID is already registered. Please use a different ID.";
             break;
           default:
             message = firebaseError.message;
@@ -124,6 +136,50 @@ const Auth = () => {
                       required={!isLogin}
                     />
                   </div>
+                </div>
+              )}
+
+              {!isLogin && (
+                <div className="space-y-2">
+                  <Label htmlFor="studentId">ID</Label>
+                  <div className="relative">
+                    <IdCard className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="studentId"
+                      type="text"
+                      placeholder="e.g. HRMU-2025-1234"
+                      value={studentId}
+                      onChange={(e) => setStudentId(e.target.value)}
+                      className="pl-10"
+                      required={!isLogin}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {!isLogin && (
+                <div className="space-y-2">
+                  <Label htmlFor="college">College (optional)</Label>
+                  <Input
+                    id="college"
+                    type="text"
+                    placeholder="College of Agriculture"
+                    value={college}
+                    onChange={(e) => setCollege(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {!isLogin && (
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department (optional)</Label>
+                  <Input
+                    id="department"
+                    type="text"
+                    placeholder="Department of Plant Science"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                  />
                 </div>
               )}
 

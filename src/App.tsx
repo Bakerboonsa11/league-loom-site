@@ -24,6 +24,7 @@ import TableRankPage from "./pages/admin/TableRank";
 import AdminGroupPage from "./pages/admin/group";
 import AdminBlogManager from "./pages/admin/BlogManager";
 import AdminVlogManager from "./pages/admin/VlogManager";
+import RoundOff from "./pages/RoundOff";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
         <Route path="/" element={<Index />} />
         <Route path="/teams" element={<Teams />} />
         <Route path="/matches" element={<Matches />} />
+        <Route path="/round-off" element={<RoundOff />} />
         <Route path="/standings" element={<Standings />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/vlog" element={<Vlog />} />

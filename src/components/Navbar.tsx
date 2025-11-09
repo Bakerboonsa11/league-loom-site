@@ -1,9 +1,17 @@
 import { NavLink } from "@/components/NavLink";
-import { Trophy, Menu, X, LogOut, User } from "lucide-react";
-import { useState } from "react";
+import { Trophy, Menu, X, LogOut } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,10 +24,22 @@ const Navbar = () => {
     setIsMenuOpen(false);
   };
 
+  const initials = useMemo(() => {
+    if (!user?.name) {
+      return "U";
+    }
+    return user.name
+      .split(" ")
+      .map((part) => part.charAt(0).toUpperCase())
+      .slice(0, 2)
+      .join("") || "U";
+  }, [user?.name]);
+
   const navItems = [
     { to: "/", label: "Home" },
     { to: "/teams", label: "Teams" },
     { to: "/matches", label: "Matches" },
+    { to: "/round-off", label: "Round Off" },
     { to: "/standings", label: "Standings" },
     { to: "/blog", label: "Blog" },
     { to: "/vlog", label: "Vlog" },
@@ -61,16 +81,27 @@ const Navbar = () => {
             )}
             
             {user ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="w-4 h-4" />
-                  <span>{user.name}</span>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 text-sm text-foreground focus:outline-none">
+                    <Avatar className="h-9 w-9 border border-border">
+                      {user.photoUrl ? (
+                        <AvatarImage src={user.photoUrl} alt={user.name} />
+                      ) : (
+                        <AvatarFallback>{initials}</AvatarFallback>
+                      )}
+                    </Avatar>
+                    <span className="hidden lg:inline text-sm font-medium text-muted-foreground">{user.name}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onSelect={() => navigate("/profile")}>Profile</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={handleLogout} className="text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" /> Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Button variant="default" size="sm" onClick={() => navigate("/auth")}>
                 Sign In
@@ -118,14 +149,28 @@ const Navbar = () => {
               <div className="border-t border-border pt-4 mt-2">
                 {user ? (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
-                      <User className="w-4 h-4" />
-                      <span>{user.name}</span>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground px-2">
+                      <Avatar className="h-10 w-10 border border-border">
+                        {user.photoUrl ? (
+                          <AvatarImage src={user.photoUrl} alt={user.name} />
+                        ) : (
+                          <AvatarFallback>{initials}</AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">{user.name}</span>
+                        <span className="text-xs text-muted-foreground">{user.email}</span>
+                      </div>
                     </div>
-                    <Button variant="outline" className="w-full" onClick={handleLogout}>
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="secondary" className="w-full" onClick={() => { navigate("/profile"); setIsMenuOpen(false); }}>
+                        Profile
+                      </Button>
+                      <Button variant="outline" className="w-full" onClick={handleLogout}>
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Logout
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <Button variant="default" className="w-full" onClick={() => { navigate("/auth"); setIsMenuOpen(false); }}>

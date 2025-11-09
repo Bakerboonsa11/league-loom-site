@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getFirestore, collection, getDocs, doc, deleteDoc, DocumentReference } from "firebase/firestore";
+import { getFirestore, collection, getDocs, doc, deleteDoc, DocumentReference, query, where } from "firebase/firestore";
 import { auth } from "@/firebase";
 import {
   Table,
@@ -53,6 +53,11 @@ interface Game {
   status: "Upcoming" | "Live" | "Finished";
 }
 
+interface UniqueGame extends Game {
+  team1GroupName?: string | null;
+  team2GroupName?: string | null;
+}
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -73,34 +78,75 @@ const itemVariants = {
 
 const AdminGamesPage = () => {
   const [games, setGames] = useState<Game[]>([]);
+  const [uniqueGames, setUniqueGames] = useState<UniqueGame[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUniqueLoading, setIsUniqueLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uniqueError, setUniqueError] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isUniqueCreateDialogOpen, setIsUniqueCreateDialogOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
+  const [editingUniqueGame, setEditingUniqueGame] = useState<UniqueGame | null>(null);
   const [addingResultGame, setAddingResultGame] = useState<Game | null>(null);
+  const [addingUniqueResultGame, setAddingUniqueResultGame] = useState<UniqueGame | null>(null);
 
   const { toast } = useToast();
 
+  const resolveTeams = async (teamRef: DocumentReference): Promise<Team> => {
+    const teamSnap = await getDoc(teamRef);
+    return { id: teamSnap.id, ...teamSnap.data() } as Team;
+  };
+
   const fetchGames = async () => {
     setIsLoading(true);
+    setIsUniqueLoading(true);
     setError(null);
+    setUniqueError(null);
     try {
-      const gamesCollection = collection(db, "games");
-      const gamesSnapshot = await getDocs(gamesCollection);
-      const gamesList = await Promise.all(gamesSnapshot.docs.map(async (doc) => {
-        const gameData = { id: doc.id, ...doc.data() } as Game;
-        const team1Doc = await getDoc(gameData.team1);
-        const team2Doc = await getDoc(gameData.team2);
-        gameData.team1Data = { id: team1Doc.id, ...team1Doc.data() } as Team;
-        gameData.team2Data = { id: team2Doc.id, ...team2Doc.data() } as Team;
-        return gameData;
-      }));
+      const [gamesSnapshot, uniqueGamesSnapshot] = await Promise.all([
+        getDocs(collection(db, "games")),
+        getDocs(collection(db, "unique_game")),
+      ]);
+
+      const gamesList = await Promise.all(
+        gamesSnapshot.docs.map(async (snapshot) => {
+          const gameData = { id: snapshot.id, ...snapshot.data() } as Game;
+          const [team1Data, team2Data] = await Promise.all([
+            resolveTeams(gameData.team1),
+            resolveTeams(gameData.team2),
+          ]);
+          return {
+            ...gameData,
+            team1Data,
+            team2Data,
+          } satisfies Game;
+        }),
+      );
+
+      const uniqueGamesList = await Promise.all(
+        uniqueGamesSnapshot.docs.map(async (snapshot) => {
+          const data = { id: snapshot.id, ...snapshot.data() } as UniqueGame;
+          const [team1Data, team2Data] = await Promise.all([
+            resolveTeams(data.team1),
+            resolveTeams(data.team2),
+          ]);
+          return {
+            ...data,
+            team1Data,
+            team2Data,
+          } satisfies UniqueGame;
+        }),
+      );
+
       setGames(gamesList);
+      setUniqueGames(uniqueGamesList);
     } catch (err) {
       setError("Failed to fetch games. Make sure you have the correct permissions.");
+      setUniqueError("Failed to fetch round-off games. Check your permissions.");
       console.error(err);
     } finally {
       setIsLoading(false);
+      setIsUniqueLoading(false);
     }
   };
 
@@ -118,6 +164,27 @@ const AdminGamesPage = () => {
         variant: "destructive",
         title: "Error deleting game",
         description: "There was a problem deleting the game.",
+      });
+    }
+  };
+
+  const handleUniqueDelete = async (gameId: string) => {
+    try {
+      await deleteDoc(doc(db, "unique_game", gameId));
+      await deleteDoc(doc(db, "unique_results", gameId));
+
+      const uniqueGoalsSnapshot = await getDocs(query(collection(db, "unique_goals"), where("gameId", "==", gameId)));
+      if (!uniqueGoalsSnapshot.empty) {
+        await Promise.all(uniqueGoalsSnapshot.docs.map((goalDoc) => deleteDoc(goalDoc.ref)));
+      }
+
+      toast({ title: "Round-Off game deleted", description: "The unique matchup has been removed." });
+      fetchGames();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error deleting round-off game",
+        description: "There was a problem deleting the unique matchup.",
       });
     }
   };
@@ -221,6 +288,100 @@ const AdminGamesPage = () => {
         </CardContent>
       </Card>
 
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle>Round-Off Game Management</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-end mb-4">
+            <Dialog open={isUniqueCreateDialogOpen} onOpenChange={setIsUniqueCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="secondary">Create Round-Off Game</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Round-Off Game</DialogTitle>
+                  <DialogDescription>Schedule a cross-group showcase fixture.</DialogDescription>
+                </DialogHeader>
+                <GameForm
+                  targetCollection="unique_game"
+                  onFinished={() => {
+                    setIsUniqueCreateDialogOpen(false);
+                    fetchGames();
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {isUniqueLoading && <p>Loading round-off games...</p>}
+          {uniqueError && <p className="text-destructive">{uniqueError}</p>}
+          {!isUniqueLoading && !uniqueError && (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Team 1</TableHead>
+                    <TableHead>Team 2</TableHead>
+                    <TableHead>Groups</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
+                  {uniqueGames.map((game) => (
+                    <motion.tr key={game.id} variants={itemVariants} className="hover:bg-muted/50 transition-colors">
+                      <TableCell className="font-medium">{game.team1Data?.name}</TableCell>
+                      <TableCell className="font-medium">{game.team2Data?.name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {(game.team1GroupName ?? "Independent") + " vs " + (game.team2GroupName ?? "Independent")}
+                      </TableCell>
+                      <TableCell>{new Date((game.date as any).seconds * 1000).toLocaleDateString()}</TableCell>
+                      <TableCell>{game.status}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAddingUniqueResultGame(game)}
+                            disabled={game.status === "Finished"}
+                          >
+                            Add Result
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setEditingUniqueGame(game)}>
+                            Edit
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm">Delete</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remove round-off game?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete the matchup and its recorded results.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleUniqueDelete(game.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </motion.tr>
+                  ))}
+                </motion.tbody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Dialog open={!!editingGame} onOpenChange={(open) => !open && setEditingGame(null)}>
         <DialogContent>
           <DialogHeader>
@@ -250,6 +411,52 @@ const AdminGamesPage = () => {
               gameId={addingResultGame.id}
               onFinished={() => {
                 setAddingResultGame(null);
+                fetchGames();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingUniqueGame} onOpenChange={(open) => !open && setEditingUniqueGame(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Round-Off Game</DialogTitle>
+            <DialogDescription>Update the matchup details for this showcase game.</DialogDescription>
+          </DialogHeader>
+          {editingUniqueGame && (
+            <GameForm
+              targetCollection="unique_game"
+              game={{
+                ...editingUniqueGame,
+                team1: editingUniqueGame.team1.id,
+                team2: editingUniqueGame.team2.id,
+                date: new Date((editingUniqueGame.date as any).seconds * 1000),
+              }}
+              onFinished={() => {
+                setEditingUniqueGame(null);
+                fetchGames();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!addingUniqueResultGame} onOpenChange={(open) => !open && setAddingUniqueResultGame(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Result for Round-Off Game</DialogTitle>
+            <DialogDescription>Record the final outcome for this round-off fixture.</DialogDescription>
+          </DialogHeader>
+          {addingUniqueResultGame && (
+            <ResultForm
+              gameId={addingUniqueResultGame.id}
+              gameCollection="unique_game"
+              resultCollection="unique_results"
+              goalsCollection="unique_goals"
+              matchContext="round-off"
+              onFinished={() => {
+                setAddingUniqueResultGame(null);
                 fetchGames();
               }}
             />

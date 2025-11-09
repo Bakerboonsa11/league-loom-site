@@ -12,12 +12,12 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow create: if isSignedIn() && request.auth.uid == userId;
-      allow read: if true;
-      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow read: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+      allow update: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
       allow delete: if isAdmin();
     }
     match /users {
-      allow list: if true;
+      allow list: if isAdmin();
     }
 
     match /teams/{teamId} {
@@ -49,12 +49,54 @@ service cloud.firestore {
       allow list: if true;
     }
 
+    match /goals/{goalId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /goals {
+      allow list: if true;
+    }
+
+    match /unique_results/{resultId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /unique_results {
+      allow list: if true;
+    }
+
+    match /unique_goals/{goalId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /unique_goals {
+      allow list: if true;
+    }
+
+    match /userIds/{studentId} {
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow read: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    match /userIds {
+      allow list: if isAdmin();
+    }
+
     match /groups/{groupId} {
       allow read: if isSignedIn();
       allow write, delete: if isAdmin();
     }
     match /groups {
       allow list: if isSignedIn();
+    }
+
+    match /unique_game/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /unique_game {
+      allow list: if true;
     }
 
     match /blogPosts/{postId} {

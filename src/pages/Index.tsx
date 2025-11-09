@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, Users, Calendar, TrendingUp, Star, Quote } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroBanner from "@/assets/hero-banner.jpg";
-import { collection, getDocs, getFirestore, Timestamp, type DocumentReference } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, getFirestore, Timestamp, query, where, type DocumentReference } from "firebase/firestore";
 import { auth } from "@/firebase";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 const db = getFirestore(auth.app);
 
@@ -36,6 +38,19 @@ interface ResultDoc {
   awayScore?: number;
 }
 
+interface GoalDoc {
+  scorerId: string;
+  scorerName: string;
+  scorerPhotoUrl?: string;
+}
+
+interface ScorerSummary {
+  scorerId: string;
+  scorerName: string;
+  goals: number;
+  photoUrl?: string;
+}
+
 interface HighlightMatch {
   id: string;
   homeTeam: string;
@@ -56,6 +71,7 @@ const Index = () => {
   const [matchesCount, setMatchesCount] = useState(0);
   const [isLoadingMatches, setIsLoadingMatches] = useState(true);
   const [matchesError, setMatchesError] = useState<string | null>(null);
+  const [topScorers, setTopScorers] = useState<ScorerSummary[]>([]);
 
   useEffect(() => {
     const fetchHomepageData = async () => {
@@ -63,21 +79,28 @@ const Index = () => {
       setMatchesError(null);
 
       try {
-        const [teamsSnapshot, gamesSnapshot, resultsSnapshot, usersSnapshot] = await Promise.all([
+        const [teamsSnapshot, gamesSnapshot, resultsSnapshot, goalsSnapshot, uniqueGoalsSnapshot] = await Promise.all([
           getDocs(collection(db, "teams")),
           getDocs(collection(db, "games")),
           getDocs(collection(db, "results")),
-          getDocs(collection(db, "users")),
+          getDocs(collection(db, "goals")),
+          getDocs(collection(db, "unique_goals")),
         ]);
 
         setTeamsCount(teamsSnapshot.size);
         setMatchesCount(gamesSnapshot.size);
 
-        const playerCount = usersSnapshot.docs.filter((docSnap) => {
-          const data = docSnap.data();
-          return data.role === "student";
-        }).length;
-        setPlayersCount(playerCount);
+        try {
+          const usersSnapshot = await getDocs(collection(db, "users"));
+          const playerCount = usersSnapshot.docs.filter((docSnap) => {
+            const data = docSnap.data();
+            return data.role === "student";
+          }).length;
+          setPlayersCount(playerCount);
+        } catch (usersError) {
+          console.warn("Unable to load player count", usersError);
+          setPlayersCount(0);
+        }
 
         const teamMap = new Map<string, TeamDoc>();
         teamsSnapshot.docs.forEach((teamDoc) => {
@@ -130,6 +153,83 @@ const Index = () => {
           .slice(0, 3);
 
         setMatches(highlightMatches);
+
+        const scorerMap = new Map<string, ScorerSummary>();
+
+        const accumulateGoal = (data: GoalDoc | null | undefined) => {
+          if (!data?.scorerId || !data.scorerName) return;
+          const existing = scorerMap.get(data.scorerId);
+          if (existing) {
+            existing.goals += 1;
+            if (!existing.photoUrl && data.scorerPhotoUrl) {
+              existing.photoUrl = data.scorerPhotoUrl;
+            }
+          } else {
+            scorerMap.set(data.scorerId, {
+              scorerId: data.scorerId,
+              scorerName: data.scorerName,
+              goals: 1,
+              photoUrl: data.scorerPhotoUrl,
+            });
+          }
+        };
+
+        goalsSnapshot.docs.forEach((goalDoc) => accumulateGoal(goalDoc.data() as GoalDoc));
+        uniqueGoalsSnapshot.docs.forEach((goalDoc) => accumulateGoal(goalDoc.data() as GoalDoc));
+
+        const scorers = Array.from(scorerMap.values());
+
+        const photoMap = new Map<string, string>();
+        const scorerIds = scorers.map((scorer) => scorer.scorerId);
+
+        for (let i = 0; i < scorerIds.length; i += 10) {
+          const chunk = scorerIds.slice(i, i + 10);
+          try {
+            const scorerQuery = query(collection(db, "users"), where("userId", "in", chunk));
+            const chunkSnapshot = await getDocs(scorerQuery);
+            chunkSnapshot.forEach((docSnap) => {
+              const data = docSnap.data() as { userId?: string; photoUrl?: string };
+              if (data.userId && data.photoUrl) {
+                photoMap.set(data.userId, data.photoUrl);
+              }
+            });
+          } catch (error) {
+            console.warn("Unable to batch load scorer avatars", error, { chunk });
+          }
+        }
+
+        await Promise.all(
+          scorers
+            .filter((scorer) => !photoMap.has(scorer.scorerId) && !scorer.scorerId.includes("/"))
+            .map(async (scorer) => {
+              try {
+                const userRef = doc(db, "users", scorer.scorerId);
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                  const data = userSnap.data() as { photoUrl?: string; userId?: string };
+                  const key = data?.userId ?? scorer.scorerId;
+                  if (data?.photoUrl) {
+                    photoMap.set(key, data.photoUrl);
+                  }
+                }
+              } catch (fallbackError) {
+                console.warn(`Unable to fetch fallback avatar for scorer ${scorer.scorerId}`, fallbackError);
+              }
+            }),
+        );
+
+        const sortedScorers = scorers
+          .sort((a, b) => {
+            const diff = b.goals - a.goals;
+            if (diff !== 0) return diff;
+            return a.scorerName.localeCompare(b.scorerName);
+          })
+          .slice(0, 3)
+          .map((scorer) => ({
+            ...scorer,
+            photoUrl: scorer.photoUrl ?? photoMap.get(scorer.scorerId),
+          }));
+        setTopScorers(sortedScorers);
       } catch (error) {
         console.error("Failed to load homepage data", error);
         setMatchesError("We couldn't load the latest matches right now. Please check back soon.");
@@ -226,7 +326,7 @@ const Index = () => {
       name: "Barni Alemu",
       role: "Midfielder, Haramaya Men’s Football",
       content: "The lads keep our midfield shape sharp with shared scouting clips and fixture reminders right inside the platform.",
-      avatar: "/barni.jpg",
+      avatar: "/barni2.jpg",
       rating: 5,
     },
     {
@@ -250,7 +350,7 @@ const Index = () => {
       name: "Tade Bekele",
       role: "Goalkeeper, Haramaya Men’s Football",
       content: "League Loom’s alerts and film breakdowns help me prep for penalty saves and command the box with confidence.",
-      avatar: "https://res.cloudinary.com/dg2kyhuh0/image/upload/v1731001234/league-loom/testimonial-coach.png",
+      avatar: "/tade.jpg",
       rating: 5,
     },
   ];
@@ -300,6 +400,87 @@ const Index = () => {
               </Link>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Top Scorers */}
+      <section className="py-16 bg-gradient-to-b from-card/70 via-background to-background border-b border-border">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12 space-y-3">
+            <h2 className="text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+              Golden Boot Leaders
+            </h2>
+            <p className="text-muted-foreground">Blink-and-you'll-miss-it finishers lighting up the league.</p>
+          </div>
+          {topScorers.length === 0 ? (
+            <Card className="max-w-3xl mx-auto border-dashed border-muted/60 bg-card/60 backdrop-blur">
+              <CardContent className="py-10 text-center text-muted-foreground">
+                No goals recorded yet.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="flex flex-col sm:flex-row justify-center gap-6 max-w-5xl mx-auto">
+              {topScorers.map((scorer, index) => {
+                const initials = scorer.scorerName
+                  .split(" ")
+                  .map((part) => part.charAt(0).toUpperCase())
+                  .slice(0, 2)
+                  .join("") || "U";
+
+                const gradientClasses = [
+                  "from-primary/90 via-primary to-primary/60",
+                  "from-secondary/90 via-secondary to-secondary/60",
+                  "from-accent/90 via-accent to-accent/60",
+                ];
+
+                return (
+                  <div
+                    key={scorer.scorerId}
+                    className={cn(
+                      "relative flex-1 min-w-[220px] max-w-[260px] rounded-2xl border border-border/50 bg-card/80 backdrop-blur px-5 py-6",
+                      "shadow-[0_20px_45px_-25px_rgba(0,0,0,0.6)] hover:shadow-[0_20px_45px_-20px_rgba(0,0,0,0.7)] transition-shadow",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "absolute inset-0 rounded-2xl opacity-10",
+                        "bg-gradient-to-br",
+                        gradientClasses[index % gradientClasses.length],
+                      )}
+                    />
+                    <div className="relative flex items-center gap-4">
+                      <div className="flex flex-col items-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span className="text-[0.65rem]">Rank</span>
+                        <span className="text-3xl font-black text-foreground">#{index + 1}</span>
+                      </div>
+                      <Avatar className="h-14 w-14 border-2 border-background/40 shadow-inner">
+                        {scorer.photoUrl ? (
+                          <AvatarImage src={scorer.photoUrl} alt={scorer.scorerName} />
+                        ) : (
+                          <AvatarFallback className="bg-muted/70 text-lg font-semibold text-foreground">
+                            {initials}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground">{scorer.goals} goals</p>
+                        <p className="text-lg font-semibold text-foreground line-clamp-2">{scorer.scorerName}</p>
+                      </div>
+                    </div>
+                    <div className="relative mt-5 h-1 rounded-full bg-muted">
+                      <div
+                        className={cn(
+                          "h-full rounded-full bg-gradient-to-r",
+                          gradientClasses[index % gradientClasses.length],
+                        )}
+                        style={{ width: `${Math.max(20, Math.min(100, scorer.goals * 20))}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
