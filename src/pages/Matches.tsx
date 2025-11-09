@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Clock, MapPin, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { collection, DocumentReference, getDocs, getFirestore, Timestamp } from "firebase/firestore";
 import { auth } from "@/firebase";
 
@@ -37,6 +38,23 @@ type ResultDoc = {
   awayRedCards?: number;
 };
 
+type GoalDoc = {
+  gameId?: string;
+  scorerName?: string;
+  scorerPhotoUrl?: string;
+  teamSide?: "home" | "away";
+};
+
+type GoalSummary = {
+  scorerName: string;
+  scorerPhotoUrl?: string;
+};
+
+type GameGoals = {
+  home: GoalSummary[];
+  away: GoalSummary[];
+};
+
 type TeamDoc = {
   id: string;
   name?: string;
@@ -64,7 +82,15 @@ type GameWithTeams = {
     homeRedCards?: number | null;
     awayRedCards?: number | null;
   } | null;
+  goals?: GameGoals | null;
 };
+
+const formatLocalTime = (date: Date) =>
+  new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 
 const formatDate = (date: Date | null) => {
   if (!date) return "TBD";
@@ -77,10 +103,7 @@ const formatDate = (date: Date | null) => {
 
 const formatTime = (date: Date | null) => {
   if (!date) return "";
-  return date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return `${formatLocalTime(date)} local time`;
 };
 
 const Matches = () => {
@@ -95,10 +118,11 @@ const Matches = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [teamsSnapshot, gamesSnapshot, resultsSnapshot] = await Promise.all([
+      const [teamsSnapshot, gamesSnapshot, resultsSnapshot, goalsSnapshot] = await Promise.all([
         getDocs(collection(db, "teams")),
         getDocs(collection(db, "games")),
         getDocs(collection(db, "results")),
+        getDocs(collection(db, "goals")),
       ]);
 
       const teamMap = new Map<string, TeamDoc>();
@@ -112,6 +136,25 @@ const Matches = () => {
         resultMap.set(resultDoc.id, resultDoc.data() as ResultDoc);
       });
 
+      const goalMap = new Map<string, GameGoals>();
+      goalsSnapshot.docs.forEach((goalDoc) => {
+        const data = goalDoc.data() as GoalDoc;
+        if (!data.gameId || !data.teamSide || !data.scorerName) {
+          return;
+        }
+        const entry = goalMap.get(data.gameId) ?? { home: [], away: [] };
+        const goalSummary: GoalSummary = {
+          scorerName: data.scorerName,
+          scorerPhotoUrl: data.scorerPhotoUrl,
+        };
+        if (data.teamSide === "home") {
+          entry.home.push(goalSummary);
+        } else {
+          entry.away.push(goalSummary);
+        }
+        goalMap.set(data.gameId, entry);
+      });
+
       const gamesList: GameWithTeams[] = gamesSnapshot.docs.map((gameDoc) => {
         const data = gameDoc.data() as GameDoc;
         const dateValue = data.date instanceof Timestamp ? data.date.toDate() : data.date ? new Date(data.date) : null;
@@ -120,9 +163,9 @@ const Matches = () => {
         const team1 = (team1Id ? teamMap.get(team1Id) : undefined) ?? { id: team1Id ?? "", name: "TBD" };
         const team2 = (team2Id ? teamMap.get(team2Id) : undefined) ?? { id: team2Id ?? "", name: "TBD" };
         const result = resultMap.get(gameDoc.id);
-        const kickoffTime =
-          data.kickoffTime ?? (dateValue ? dateValue.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : null);
+        const kickoffTime = data.kickoffTime ?? (dateValue ? `${formatLocalTime(dateValue)} local time` : null);
         const location = data.location ?? data.venue ?? null;
+        const goals = goalMap.get(gameDoc.id);
 
         return {
           id: gameDoc.id,
@@ -147,6 +190,7 @@ const Matches = () => {
                 awayRedCards: result.awayRedCards ?? null,
               }
             : null,
+          goals: goals && (goals.home.length > 0 || goals.away.length > 0) ? goals : null,
         } satisfies GameWithTeams;
       });
 
@@ -397,6 +441,9 @@ const Matches = () => {
                                 </div>
                                 <span className="text-2xl font-bold">{game.result?.homeScore ?? "—"}</span>
                               </div>
+                              {game.goals?.home?.length ? (
+                                <GoalScorerList scorers={game.goals.home} alignment="start" />
+                              ) : null}
                               <div className="flex items-center justify-between gap-4">
                                 <div className="flex items-center gap-3">
                                   {game.team2Logo ? (
@@ -406,6 +453,9 @@ const Matches = () => {
                                 </div>
                                 <span className="text-2xl font-bold">{game.result?.awayScore ?? "—"}</span>
                               </div>
+                              {game.goals?.away?.length ? (
+                                <GoalScorerList scorers={game.goals.away} alignment="end" />
+                              ) : null}
                             </div>
                             <div className="text-muted-foreground text-sm space-y-1 min-w-[160px]">
                               {game.date ? <div>{formatDate(game.date)}</div> : null}
@@ -436,3 +486,36 @@ const Matches = () => {
 };
 
 export default Matches;
+
+const GoalScorerList = ({ scorers, alignment }: { scorers: GoalSummary[]; alignment: "start" | "end" }) => {
+  if (scorers.length === 0) {
+    return null;
+  }
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((part) => part.charAt(0).toUpperCase())
+      .slice(0, 2)
+      .join("") || "G";
+
+  return (
+    <div className="flex flex-wrap gap-2" style={{ justifyContent: alignment === "end" ? "flex-end" : "flex-start" }}>
+      {scorers.map((scorer, index) => (
+        <div
+          key={`${scorer.scorerName}-${index}`}
+          className="flex items-center gap-2 rounded-full border border-border/50 bg-background/80 px-3 py-1 text-xs text-foreground shadow-sm"
+        >
+          <Avatar className="h-6 w-6 border border-border/50">
+            {scorer.scorerPhotoUrl ? (
+              <AvatarImage src={scorer.scorerPhotoUrl} alt={scorer.scorerName} />
+            ) : (
+              <AvatarFallback className="text-[0.65rem] font-semibold">{getInitials(scorer.scorerName)}</AvatarFallback>
+            )}
+          </Avatar>
+          <span>{scorer.scorerName}</span>
+        </div>
+      ))}
+    </div>
+  );
+};

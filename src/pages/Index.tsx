@@ -67,6 +67,13 @@ interface HighlightMatch {
   awayLogo?: string | null;
 }
 
+const formatLocalTime = (date: Date) =>
+  new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+
 const Index = () => {
   const [matches, setMatches] = useState<HighlightMatch[]>([]);
   const [teamsCount, setTeamsCount] = useState(0);
@@ -132,6 +139,9 @@ const Index = () => {
                 })
               : "TBA";
 
+            const formattedKickoff =
+              data.kickoffTime ?? (dateValue ? `${formatLocalTime(dateValue)} local time` : null);
+
             return {
               id: gameDoc.id,
               homeTeam: team1?.name ?? "TBD",
@@ -140,7 +150,7 @@ const Index = () => {
               status: data.status ?? "Upcoming",
               venue: data.venue ?? data.location ?? null,
               location: data.location ?? data.venue ?? null,
-              kickoffTime: data.kickoffTime ?? null,
+              kickoffTime: formattedKickoff,
               homeScore: result?.homeScore ?? null,
               awayScore: result?.awayScore ?? null,
               homeLogo: team1?.logoUrl ?? null,

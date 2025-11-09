@@ -84,11 +84,11 @@ service cloud.firestore {
     }
 
     match /groups/{groupId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write, delete: if isAdmin();
     }
     match /groups {
-      allow list: if isSignedIn();
+      allow list: if true;
     }
 
     match /unique_game/{docId} {
