@@ -51,6 +51,8 @@ interface Game {
   team2Data?: Team;
   date: { seconds: number; nanoseconds: number; };
   status: "Upcoming" | "Live" | "Finished";
+  kickoffTime?: string | null;
+  location?: string | null;
 }
 
 interface UniqueGame extends Game {
@@ -74,6 +76,12 @@ const itemVariants = {
     y: 0,
     opacity: 1,
   },
+};
+
+const formatGameTime = (date: { seconds: number; nanoseconds: number } | Date | undefined | null) => {
+  if (!date) return "TBA";
+  const value = date instanceof Date ? date : new Date(date.seconds * 1000);
+  return value.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 };
 
 const AdminGamesPage = () => {
@@ -225,6 +233,8 @@ const AdminGamesPage = () => {
                   <TableRow>
                     <TableHead>Team 1</TableHead>
                     <TableHead>Team 2</TableHead>
+                    <TableHead className="hidden md:table-cell">Kickoff</TableHead>
+                    <TableHead className="hidden md:table-cell">Location</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -243,6 +253,12 @@ const AdminGamesPage = () => {
                     >
                       <TableCell className="font-medium">{game.team1Data?.name}</TableCell>
                       <TableCell className="font-medium">{game.team2Data?.name}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {game.kickoffTime ?? formatGameTime(game.date)}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {game.location ?? "TBD"}
+                      </TableCell>
                       <TableCell>{new Date(game.date.seconds * 1000).toLocaleDateString()}</TableCell>
                       <TableCell>{game.status}</TableCell>
                       <TableCell className="text-right">
@@ -324,6 +340,8 @@ const AdminGamesPage = () => {
                     <TableHead>Team 1</TableHead>
                     <TableHead>Team 2</TableHead>
                     <TableHead>Groups</TableHead>
+                    <TableHead className="hidden md:table-cell">Kickoff</TableHead>
+                    <TableHead className="hidden md:table-cell">Location</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -336,6 +354,12 @@ const AdminGamesPage = () => {
                       <TableCell className="font-medium">{game.team2Data?.name}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {(game.team1GroupName ?? "Independent") + " vs " + (game.team2GroupName ?? "Independent")}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {game.kickoffTime ?? formatGameTime(game.date)}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {game.location ?? "TBD"}
                       </TableCell>
                       <TableCell>{new Date((game.date as any).seconds * 1000).toLocaleDateString()}</TableCell>
                       <TableCell>{game.status}</TableCell>
@@ -390,7 +414,14 @@ const AdminGamesPage = () => {
           </DialogHeader>
           {editingGame && (
             <GameForm
-              game={{...editingGame, team1: editingGame.team1.id, team2: editingGame.team2.id, date: new Date(editingGame.date.seconds * 1000)}}
+              game={{
+                ...editingGame,
+                team1: editingGame.team1.id,
+                team2: editingGame.team2.id,
+                date: new Date(editingGame.date.seconds * 1000),
+                kickoffTime: editingGame.kickoffTime ?? formatGameTime(editingGame.date),
+                location: editingGame.location ?? "",
+              }}
               onFinished={() => {
                 setEditingGame(null);
                 fetchGames();
@@ -432,6 +463,8 @@ const AdminGamesPage = () => {
                 team1: editingUniqueGame.team1.id,
                 team2: editingUniqueGame.team2.id,
                 date: new Date((editingUniqueGame.date as any).seconds * 1000),
+                kickoffTime: editingUniqueGame.kickoffTime ?? formatGameTime(editingUniqueGame.date),
+                location: editingUniqueGame.location ?? "",
               }}
               onFinished={() => {
                 setEditingUniqueGame(null);

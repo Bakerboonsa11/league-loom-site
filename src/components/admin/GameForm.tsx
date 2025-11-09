@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -44,6 +45,12 @@ const formSchema = z.object({
   team2: z.string().min(1, "Please select Team 2."),
   date: z.date(),
   status: z.enum(["Upcoming", "Live", "Finished"]),
+  time: z
+    .string()
+    .min(1, "Please select a kickoff time."),
+  location: z
+    .string()
+    .min(1, "Please provide a location."),
 });
 
 interface Game {
@@ -52,6 +59,8 @@ interface Game {
   team2: string;
   date: Date;
   status: "Upcoming" | "Live" | "Finished";
+  kickoffTime?: string | null;
+  location?: string | null;
 }
 
 interface Team {
@@ -116,6 +125,8 @@ const GameForm = ({ game, onFinished, targetCollection = "games" }: GameFormProp
       team2: game?.team2 || "",
       date: game?.date ? new Date(game.date) : new Date(),
       status: game?.status || "Upcoming",
+      time: game?.kickoffTime ?? "",
+      location: game?.location ?? "",
     },
   });
 
@@ -126,11 +137,19 @@ const GameForm = ({ game, onFinished, targetCollection = "games" }: GameFormProp
   ) => {
     setIsSaving(true);
     try {
+      const kickoffTime = values.time;
+      const location = values.location.trim();
+
+      const sourceDate = values.date;
+      const matchDate = new Date(sourceDate.getFullYear(), sourceDate.getMonth(), sourceDate.getDate());
+
       const payload = {
-        date: values.date,
+        date: matchDate,
         status: values.status,
         team1: doc(db, "teams", values.team1),
         team2: doc(db, "teams", values.team2),
+        kickoffTime,
+        location,
       };
 
       if (target === "unique_game") {
@@ -300,6 +319,34 @@ const GameForm = ({ game, onFinished, targetCollection = "games" }: GameFormProp
             </FormItem>
           )}
         />
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="time"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Kickoff Time</FormLabel>
+                <FormControl>
+                  <Input type="time" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="location"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Location / Venue</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. Hornet Arena, Haramaya" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <FormField
           control={form.control}
           name="status"

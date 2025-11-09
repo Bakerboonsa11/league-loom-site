@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, RefreshCw } from "lucide-react";
+import { Calendar, Clock, MapPin, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { collection, DocumentReference, getDocs, getFirestore, Timestamp } from "firebase/firestore";
@@ -23,6 +23,7 @@ type GameDoc = {
   status?: GameStatus;
   venue?: string | null;
   location?: string | null;
+  kickoffTime?: string | null;
 };
 
 type ResultDoc = {
@@ -53,6 +54,8 @@ type GameWithTeams = {
   status: GameStatus;
   date: Date | null;
   venue?: string | null;
+  location?: string | null;
+  kickoffTime?: string | null;
   result?: {
     homeScore: number | null;
     awayScore: number | null;
@@ -117,6 +120,9 @@ const Matches = () => {
         const team1 = (team1Id ? teamMap.get(team1Id) : undefined) ?? { id: team1Id ?? "", name: "TBD" };
         const team2 = (team2Id ? teamMap.get(team2Id) : undefined) ?? { id: team2Id ?? "", name: "TBD" };
         const result = resultMap.get(gameDoc.id);
+        const kickoffTime =
+          data.kickoffTime ?? (dateValue ? dateValue.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : null);
+        const location = data.location ?? data.venue ?? null;
 
         return {
           id: gameDoc.id,
@@ -128,7 +134,9 @@ const Matches = () => {
           team2Logo: team2?.logoUrl,
           status: data.status ?? "Upcoming",
           date: dateValue,
-          venue: data.venue ?? data.location ?? null,
+          venue: data.venue ?? null,
+          location,
+          kickoffTime,
           result: result
             ? {
                 homeScore: result.homeScore ?? null,
@@ -295,8 +303,12 @@ const Matches = () => {
                           </div>
                           <div className="text-sm text-muted-foreground flex flex-wrap gap-3">
                             {game.date ? <span>{formatDate(game.date)}</span> : null}
-                            {game.date ? <span>{formatTime(game.date)}</span> : null}
-                            {game.venue ? <span>{game.venue}</span> : null}
+                            {game.kickoffTime ? <span>{game.kickoffTime}</span> : game.date ? <span>{formatTime(game.date)}</span> : null}
+                            {game.location ? (
+                              <span className="inline-flex items-center gap-1">
+                                <MapPin className="h-3 w-3" /> {game.location}
+                              </span>
+                            ) : null}
                           </div>
                         </CardHeader>
                         <CardContent className="pt-4">
@@ -354,9 +366,13 @@ const Matches = () => {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
-                                <span>{formatTime(game.date) || "TBA"}</span>
+                                <span>{game.kickoffTime || formatTime(game.date) || "TBA"}</span>
                               </div>
-                              {game.venue ? <div className="text-sm">{game.venue}</div> : null}
+                              {game.location ? (
+                                <div className="flex items-center gap-1 text-sm">
+                                  <MapPin className="w-3.5 h-3.5" /> {game.location}
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                         </CardContent>
@@ -393,8 +409,12 @@ const Matches = () => {
                             </div>
                             <div className="text-muted-foreground text-sm space-y-1 min-w-[160px]">
                               {game.date ? <div>{formatDate(game.date)}</div> : null}
-                              {game.date ? <div>{formatTime(game.date)}</div> : null}
-                              {game.venue ? <div>{game.venue}</div> : null}
+                              {game.kickoffTime ? <div>{game.kickoffTime}</div> : game.date ? <div>{formatTime(game.date)}</div> : null}
+                              {game.location ? (
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="w-3.5 h-3.5" /> {game.location}
+                                </div>
+                              ) : null}
                               {game.result ? (
                                 <div className="text-xs text-muted-foreground">
                                   Cards: {game.result.homeYellowCards ?? 0}Y / {game.result.homeRedCards ?? 0}R vs {game.result.awayYellowCards ?? 0}Y / {game.result.awayRedCards ?? 0}R

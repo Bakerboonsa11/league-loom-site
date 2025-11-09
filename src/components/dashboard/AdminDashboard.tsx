@@ -143,110 +143,173 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoadingStats ? "-" : userCount ?? "—"}
-            </div>
-            <p className="text-xs text-muted-foreground">Total registered accounts</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Colleges</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoadingStats ? "-" : collegeCount ?? "—"}
-            </div>
-            <p className="text-xs text-muted-foreground">Distinct colleges represented in teams</p>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="space-y-10">
+      <section
+        className="relative overflow-hidden rounded-3xl border border-border/40 bg-gradient-to-br from-background via-background/60 to-background"
+      >
+        <div className="absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_top,_rgba(147,197,253,0.18),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(244,114,182,0.2),_transparent_60%)]" />
+        <div className="relative grid gap-6 p-8 md:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            title="Total Users"
+            value={isLoadingStats ? "-" : userCount ?? "—"}
+            description="Total registered accounts"
+            accent="from-primary/60 via-primary/20 to-transparent"
+          />
+          <MetricCard
+            title="Total Colleges"
+            value={isLoadingStats ? "-" : collegeCount ?? "—"}
+            description="Distinct colleges represented"
+            accent="from-secondary/60 via-secondary/20 to-transparent"
+          />
+          <MetricCard
+            title="Top Scorers"
+            value={isLoadingScorers ? "-" : topScorers[0]?.goals ?? "—"}
+            description={topScorers[0]?.scorerName ?? "No data yet"}
+            accent="from-accent/60 via-accent/20 to-transparent"
+          />
+          <MetricCard
+            title="Season Progress"
+            value={new Date().getFullYear().toString()}
+            description={new Date().toLocaleDateString(undefined, { month: "long" })}
+            accent="from-emerald-500/50 via-emerald-400/20 to-transparent"
+          />
+        </div>
+      </section>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+      <Card className="border-border/40 bg-background/70 backdrop-blur-xl shadow-[0_30px_60px_-30px_rgba(59,130,246,0.45)]">
+        <CardHeader className="pb-0">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl font-semibold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+              Quick Actions
+            </CardTitle>
+            <span className="text-xs uppercase tracking-[0.45em] text-muted-foreground">Admin Suite</span>
+          </div>
+          <p className="text-sm text-muted-foreground">Jump directly into the areas you manage most.</p>
         </CardHeader>
         <motion.div
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-6"
+          className="grid grid-cols-2 gap-4 p-6 md:grid-cols-3 lg:grid-cols-4"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           {quickActions.map((action) => (
-            <motion.div key={action.label} variants={itemVariants}>
+            <motion.div key={action.label} variants={itemVariants} className="group">
               <Link to={action.to}>
-                <Button
-                  variant="outline"
-                  className="w-full h-28 flex flex-col gap-2 justify-center items-center
-                             transition-all duration-300 ease-in-out
-                             hover:scale-105 hover:bg-primary/10 hover:text-primary"
+                <div
+                  className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-background/90 via-background/60 to-background/30 p-[1px] transition-transform duration-300 group-hover:-translate-y-1"
                 >
-                  {action.icon}
-                  <span className="text-sm font-semibold">{action.label}</span>
-                </Button>
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.25),_transparent_60%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <div className="relative flex h-28 w-full flex-col items-center justify-center gap-3 rounded-2xl bg-background/80 backdrop-blur-sm shadow-[0_18px_30px_-18px_rgba(59,130,246,0.55)]">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border/40 bg-primary/10 text-primary transition-colors duration-300 group-hover:border-primary/40 group-hover:bg-primary/20">
+                      {action.icon}
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">{action.label}</span>
+                  </div>
+                </div>
               </Link>
             </motion.div>
           ))}
         </motion.div>
       </Card>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>New Users per Month</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="users" fill="#8884d8" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Top Goal Scorers</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoadingScorers ? (
-            <p className="text-sm text-muted-foreground">Loading scorers…</p>
-          ) : topScorers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No goals recorded yet.</p>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-3">
-              {topScorers.map((scorer, index) => (
-                <Card key={scorer.scorerId} className="border-border bg-card/60">
-                  <CardHeader className="text-center space-y-1">
-                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <Trophy className="h-4 w-4 text-primary" />
-                      <span>#{index + 1}</span>
-                    </div>
-                    <CardTitle className="text-lg font-semibold">{scorer.scorerName}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    <p className="text-3xl font-bold text-primary">{scorer.goals}</p>
-                    <p className="text-xs text-muted-foreground">Goals</p>
-                  </CardContent>
-                </Card>
-              ))}
+      <div className="grid gap-8 lg:grid-cols-2">
+        <Card className="border-border/40 bg-background/70 backdrop-blur-xl shadow-[0_40px_70px_-40px_rgba(99,102,241,0.55)]">
+          <CardHeader className="pb-0">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-2xl font-semibold bg-gradient-to-r from-secondary via-accent to-primary bg-clip-text text-transparent">
+                New Users per Month
+              </CardTitle>
+              <span className="text-xs uppercase tracking-[0.45em] text-muted-foreground">Analytics</span>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </>
+            <p className="text-sm text-muted-foreground">Track registration momentum across the academic cycle.</p>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(156,163,175,0.35)" />
+                  <XAxis dataKey="name" stroke="rgba(148,163,184,0.8)" />
+                  <YAxis stroke="rgba(148,163,184,0.8)" />
+                  <Tooltip contentStyle={{ background: "rgba(17,24,39,0.85)", borderRadius: 12, border: "1px solid rgba(148,163,184,0.3)", color: "#f8fafc" }} />
+                  <Legend />
+                  <Bar dataKey="users" fill="url(#usersGradient)" radius={[12, 12, 0, 0]} />
+                  <defs>
+                    <linearGradient id="usersGradient" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="rgba(14,165,233,0.9)" />
+                      <stop offset="100%" stopColor="rgba(236,72,153,0.9)" />
+                    </linearGradient>
+                  </defs>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/40 bg-background/70 backdrop-blur-xl shadow-[0_40px_70px_-40px_rgba(236,72,153,0.45)]">
+          <CardHeader className="pb-0">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-2xl font-semibold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+                Top Goal Scorers
+              </CardTitle>
+              <span className="text-xs uppercase tracking-[0.45em] text-muted-foreground">Performance</span>
+            </div>
+            <p className="text-sm text-muted-foreground">Spotlight on league leaders lighting up the scoreboard.</p>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {isLoadingScorers ? (
+              <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">Loading scorers…</div>
+            ) : topScorers.length === 0 ? (
+              <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">No goals recorded yet.</div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-3">
+                {topScorers.map((scorer, index) => (
+                  <div
+                    key={scorer.scorerId}
+                    className="relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-background/90 via-background/70 to-background/50 p-[1px]"
+                  >
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.3),_transparent_65%)]" />
+                    <div className="relative rounded-2xl bg-background/85 p-5 text-center backdrop-blur-sm">
+                      <div className="mb-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <Trophy className="h-4 w-4 text-primary" />
+                        <span>#{index + 1}</span>
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground">{scorer.scorerName}</h3>
+                      <p className="mt-4 text-3xl font-bold text-primary">{scorer.goals}</p>
+                      <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Goals</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
 
 export default AdminDashboard;
+
+interface MetricCardProps {
+  title: string;
+  value: string | number | null;
+  description: string;
+  accent: string;
+}
+
+const MetricCard = ({ title, value, description, accent }: MetricCardProps) => (
+  <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-background/80 p-[1px] shadow-[0_25px_45px_-30px_rgba(15,118,255,0.4)] backdrop-blur-xl">
+    <div className={"absolute inset-0 bg-gradient-to-br " + accent} />
+    <div className="relative flex h-full flex-col justify-between gap-4 rounded-2xl bg-background/85 p-6">
+      <div className="flex items-center justify-between">
+        <span className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Metric</span>
+        <div className="h-1 flex-1 rounded-full bg-gradient-to-r from-primary/40 via-secondary/30 to-accent/30" />
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+        <p className="mt-2 text-3xl font-bold text-foreground">{value ?? "—"}</p>
+      </div>
+      <p className="text-xs text-muted-foreground/80">{description}</p>
+    </div>
+  </div>
+);

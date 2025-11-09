@@ -46,141 +46,179 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <NavLink to="/" className="flex items-center gap-2 text-foreground hover:text-primary transition-colors">
-            <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center shadow-glow-primary">
-              <Trophy className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-xl">College League</span>
-          </NavLink>
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-gradient-to-r from-background/95 via-background/70 to-background/60 backdrop-blur-xl shadow-[0_20px_60px_-30px_rgba(59,130,246,0.55)]">
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-0 opacity-70 mix-blend-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.35),_transparent_60%),radial-gradient(circle_at_top_right,_rgba(236,72,153,0.28),_transparent_65%)]" />
+        <div className="relative container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            {/* Logo */}
+            <NavLink
+              to="/"
+              className="flex items-center gap-3 rounded-2xl border border-border/40 bg-gradient-to-r from-primary/15 via-secondary/10 to-accent/15 px-3 py-1.5 text-foreground transition-all duration-300 hover:border-primary/40 hover:shadow-[0_18px_35px_-28px_rgba(59,130,246,0.65)]"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-[0_0_18px_rgba(59,130,246,0.5)]">
+                <Trophy className="h-5 w-5" />
+              </div>
+              <span className="font-bold text-xl tracking-wide">College League</span>
+            </NavLink>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === "/"}
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-                activeClassName="text-primary"
-              >
-                {item.label}
-              </NavLink>
-            ))}
-            {user && (
-              <NavLink
-                to="/dashboard"
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-                activeClassName="text-primary"
-              >
-                Dashboard
-              </NavLink>
-            )}
-            
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 text-sm text-foreground focus:outline-none">
-                    <Avatar className="h-9 w-9 border border-border">
-                      {user.photoUrl ? (
-                        <AvatarImage src={user.photoUrl} alt={user.name} />
-                      ) : (
-                        <AvatarFallback>{initials}</AvatarFallback>
-                      )}
-                    </Avatar>
-                    <span className="hidden lg:inline text-sm font-medium text-muted-foreground">{user.name}</span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onSelect={() => navigate("/profile")}>Profile</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={handleLogout} className="text-destructive">
-                    <LogOut className="mr-2 h-4 w-4" /> Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button variant="default" size="sm" onClick={() => navigate("/auth")}>
-                Sign In
-              </Button>
-            )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden text-foreground"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border">
-            <div className="flex flex-col gap-4">
+            {/* Desktop Navigation */}
+            <div className="hidden items-center gap-6 md:flex">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   end={item.to === "/"}
-                  className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-1"
-                  activeClassName="text-primary"
-                  onClick={() => setIsMenuOpen(false)}
+                  className="relative text-sm font-semibold text-muted-foreground transition-all duration-300 hover:text-primary after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:rounded-full after:bg-gradient-to-r from-primary via-secondary to-accent after:transition-transform after:duration-300 hover:after:scale-x-100"
+                  activeClassName="text-primary after:scale-x-100"
                 >
-                  {item.label}
+                  <span className="relative z-10">{item.label}</span>
                 </NavLink>
               ))}
               {user && (
                 <NavLink
                   to="/dashboard"
-                  className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-1"
-                  activeClassName="text-primary"
-                  onClick={() => setIsMenuOpen(false)}
+                  className="relative text-sm font-semibold text-muted-foreground transition-all duration-300 hover:text-primary after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:rounded-full after:bg-gradient-to-r from-primary via-secondary to-accent after:transition-transform after:duration-300 hover:after:scale-x-100"
+                  activeClassName="text-primary after:scale-x-100"
                 >
-                  Dashboard
+                  <span className="relative z-10">Dashboard</span>
                 </NavLink>
               )}
-              
-              <div className="border-t border-border pt-4 mt-2">
-                {user ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground px-2">
-                      <Avatar className="h-10 w-10 border border-border">
+
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="group flex items-center gap-2 rounded-2xl border border-border/40 bg-background/60 px-3 py-1.5 text-sm text-foreground transition-all duration-300 hover:border-primary/40 hover:bg-primary/10">
+                      <Avatar className="h-9 w-9 border border-border/50">
                         {user.photoUrl ? (
                           <AvatarImage src={user.photoUrl} alt={user.name} />
                         ) : (
                           <AvatarFallback>{initials}</AvatarFallback>
                         )}
                       </Avatar>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-foreground">{user.name}</span>
-                        <span className="text-xs text-muted-foreground">{user.email}</span>
+                      <span className="hidden lg:inline text-sm font-medium text-muted-foreground group-hover:text-primary">
+                        {user.name}
+                      </span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-52 rounded-2xl border border-border/40 bg-background/90 shadow-[0_22px_45px_-30px_rgba(59,130,246,0.55)]"
+                  >
+                    <DropdownMenuItem onSelect={() => navigate("/profile")}>Profile</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={handleLogout} className="text-destructive">
+                      <LogOut className="mr-2 h-4 w-4" /> Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => navigate("/auth")}
+                  className="rounded-xl bg-gradient-to-r from-primary via-secondary to-accent text-primary-foreground shadow-[0_18px_35px_-20px_rgba(59,130,246,0.55)] transition-all duration-300 hover:opacity-90"
+                >
+                  Sign In
+                </Button>
+              )}
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              className="md:hidden rounded-xl border border-border/40 bg-background/70 p-2 text-muted-foreground transition-colors duration-300 hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
+
+          {/* Mobile Navigation */}
+          {isMenuOpen && (
+            <div className="md:hidden border-t border-border/40 bg-background/85 py-5 backdrop-blur-xl">
+              <div className="flex flex-col gap-4">
+                {navItems.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === "/"}
+                    className="text-sm font-medium text-muted-foreground transition-all duration-300 hover:text-primary"
+                    activeClassName="text-primary"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <span className="rounded-lg bg-background/70 px-2 py-1.5 shadow-[0_12px_28px_-22px_rgba(59,130,246,0.55)]">
+                      {item.label}
+                    </span>
+                  </NavLink>
+                ))}
+                {user && (
+                  <NavLink
+                    to="/dashboard"
+                    className="text-sm font-medium text-muted-foreground transition-all duration-300 hover:text-primary"
+                    activeClassName="text-primary"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <span className="rounded-lg bg-background/70 px-2 py-1.5 shadow-[0_12px_28px_-22px_rgba(236,72,153,0.45)]">
+                      Dashboard
+                    </span>
+                  </NavLink>
+                )}
+
+                <div className="mt-2 rounded-2xl border border-border/40 bg-background/80 p-4 shadow-[0_18px_35px_-25px_rgba(99,102,241,0.45)]">
+                  {user ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <Avatar className="h-11 w-11 border border-border/50">
+                          {user.photoUrl ? (
+                            <AvatarImage src={user.photoUrl} alt={user.name} />
+                          ) : (
+                            <AvatarFallback>{initials}</AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-foreground">{user.name}</span>
+                          <span className="text-xs text-muted-foreground">{user.email}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          variant="secondary"
+                          className="w-full rounded-xl border border-border/40 bg-background/70 hover:border-primary/40 hover:bg-primary/10"
+                          onClick={() => {
+                            navigate("/profile");
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          Profile
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full rounded-xl border border-primary/40 text-primary hover:bg-primary/10"
+                          onClick={handleLogout}
+                        >
+                          <LogOut className="mr-2 h-4 w-4" />
+                          Logout
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <Button variant="secondary" className="w-full" onClick={() => { navigate("/profile"); setIsMenuOpen(false); }}>
-                        Profile
-                      </Button>
-                      <Button variant="outline" className="w-full" onClick={handleLogout}>
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Logout
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <Button variant="default" className="w-full" onClick={() => { navigate("/auth"); setIsMenuOpen(false); }}>
-                    Sign In
-                  </Button>
-                )}
+                  ) : (
+                    <Button
+                      variant="default"
+                      className="w-full rounded-xl bg-gradient-to-r from-primary via-secondary to-accent text-primary-foreground shadow-[0_18px_35px_-20px_rgba(59,130,246,0.55)] hover:opacity-90"
+                      onClick={() => {
+                        navigate("/auth");
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      Sign In
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </nav>
   );

@@ -3,7 +3,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Users, Calendar, TrendingUp, Star, Quote } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Trophy, Users, Calendar, TrendingUp, Star, Quote, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroBanner from "@/assets/hero-banner.jpg";
 import { collection, doc, getDoc, getDocs, getFirestore, Timestamp, query, where, type DocumentReference } from "firebase/firestore";
@@ -55,9 +56,11 @@ interface HighlightMatch {
   id: string;
   homeTeam: string;
   awayTeam: string;
-  time: string;
+  dateLabel: string;
   status: MatchStatus;
   venue?: string | null;
+  location?: string | null;
+  kickoffTime?: string | null;
   homeScore?: number | null;
   awayScore?: number | null;
   homeLogo?: string | null;
@@ -122,12 +125,10 @@ const Index = () => {
             const team2 = (team2Id ? teamMap.get(team2Id) : undefined) ?? { id: team2Id ?? "", name: "TBD" };
             const result = resultMap.get(gameDoc.id);
 
-            const timeString = dateValue
-              ? dateValue.toLocaleString(undefined, {
+            const dateLabel = dateValue
+              ? dateValue.toLocaleDateString(undefined, {
                   month: "short",
                   day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
                 })
               : "TBA";
 
@@ -135,9 +136,11 @@ const Index = () => {
               id: gameDoc.id,
               homeTeam: team1?.name ?? "TBD",
               awayTeam: team2?.name ?? "TBD",
-              time: timeString,
+              dateLabel,
               status: data.status ?? "Upcoming",
               venue: data.venue ?? data.location ?? null,
+              location: data.location ?? data.venue ?? null,
+              kickoffTime: data.kickoffTime ?? null,
               homeScore: result?.homeScore ?? null,
               awayScore: result?.awayScore ?? null,
               homeLogo: team1?.logoUrl ?? null,
@@ -148,7 +151,7 @@ const Index = () => {
             const statusOrder: Record<MatchStatus, number> = { Live: 0, Upcoming: 1, Finished: 2 };
             const statusDiff = statusOrder[a.status] - statusOrder[b.status];
             if (statusDiff !== 0) return statusDiff;
-            return a.time.localeCompare(b.time);
+            return a.dateLabel.localeCompare(b.dateLabel);
           })
           .slice(0, 3);
 
@@ -530,29 +533,22 @@ const Index = () => {
               </Card>
             </div>
           ) : (
-            <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {matches.map((match) => (
-                <Card key={match.id} className="border-border hover:border-primary transition-colors bg-card/50 backdrop-blur">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span className="text-lg">{match.homeTeam}</span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          match.status === "Live"
-                            ? "bg-secondary text-secondary-foreground animate-glow"
-                            : match.status === "Upcoming"
-                            ? "bg-muted text-muted-foreground"
-                            : "bg-primary/10 text-primary"
-                        }`}
-                      >
-                        {match.status}
-                      </span>
+                <Card key={match.id} className="border-border bg-card/70 backdrop-blur">
+                  <CardHeader className="space-y-3">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{match.dateLabel}</span>
+                      <Badge variant={match.status === "Live" ? "secondary" : "outline"}>{match.status}</Badge>
+                    </div>
+                    <CardTitle className="text-xl text-center">
+                      {match.homeTeam} <span className="text-muted-foreground text-base">vs</span> {match.awayTeam}
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">{match.venue ?? "Haramaya Campus Arena"}</p>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="text-center text-muted-foreground">
-                      <div className="flex items-center justify-center gap-4 mb-2">
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
                         {match.homeLogo ? (
                           <img src={match.homeLogo} alt={match.homeTeam} className="h-12 w-12 rounded-full object-cover border border-border" />
                         ) : null}
@@ -563,7 +559,6 @@ const Index = () => {
                       </div>
                       <p className="text-lg font-semibold mt-1">{match.awayTeam}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground text-center">{match.time}</p>
                     {match.status === "Live" || match.status === "Finished" ? (
                       <div className="flex items-center justify-center gap-6 text-2xl font-bold">
                         <span>{match.homeScore ?? "-"}</span>
@@ -571,8 +566,12 @@ const Index = () => {
                         <span>{match.awayScore ?? "-"}</span>
                       </div>
                     ) : null}
-                    <Button className="w-full" variant="outline" asChild>
-                      <Link to={`/matches`}>Match Centre</Link>
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <span>{match.kickoffTime ?? "TBA"}</span>
+                      {match.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{match.location}</span>}
+                    </div>
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link to="/matches">Match Centre</Link>
                     </Button>
                   </CardContent>
                 </Card>
