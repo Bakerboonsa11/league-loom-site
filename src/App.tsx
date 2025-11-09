@@ -22,6 +22,8 @@ import PlayerSelectionPage from "./pages/admin/PlayerSelection";
 import ViewSelectionsPage from "./pages/admin/ViewSelections";
 import TableRankPage from "./pages/admin/TableRank";
 import AdminGroupPage from "./pages/admin/group";
+import AdminBlogManager from "./pages/admin/BlogManager";
+import AdminVlogManager from "./pages/admin/VlogManager";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +50,8 @@ const App = () => (
             <Route path="/admin/view-selections" element={<ViewSelectionsPage />} />
             <Route path="/admin/table-rank" element={<TableRankPage />} />
             <Route path="/admin/group" element={<AdminGroupPage />} />
+            <Route path="/admin/blog" element={<AdminBlogManager />} />
+            <Route path="/admin/vlog" element={<AdminVlogManager />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>

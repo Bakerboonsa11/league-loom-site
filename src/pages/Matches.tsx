@@ -299,19 +299,25 @@ const Matches = () => {
                             {game.venue ? <span>{game.venue}</span> : null}
                           </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pt-4">
                           <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <span className="text-lg font-semibold">{game.team1Name}</span>
-                              <span className="text-3xl font-bold text-primary">
-                                {game.result?.homeScore ?? "—"}
-                              </span>
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                {game.team1Logo ? (
+                                  <img src={game.team1Logo} alt={game.team1Name} className="h-10 w-10 rounded-full object-cover border border-border" />
+                                ) : null}
+                                <span className="text-lg font-semibold">{game.team1Name}</span>
+                              </div>
+                              <span className="text-3xl font-bold text-primary">{game.result?.homeScore ?? "—"}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-lg font-semibold">{game.team2Name}</span>
-                              <span className="text-3xl font-bold text-primary">
-                                {game.result?.awayScore ?? "—"}
-                              </span>
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                {game.team2Logo ? (
+                                  <img src={game.team2Logo} alt={game.team2Name} className="h-10 w-10 rounded-full object-cover border border-border" />
+                                ) : null}
+                                <span className="text-lg font-semibold">{game.team2Name}</span>
+                              </div>
+                              <span className="text-3xl font-bold text-primary">{game.result?.awayScore ?? "—"}</span>
                             </div>
                           </div>
                         </CardContent>
@@ -327,9 +333,19 @@ const Matches = () => {
                         <CardContent className="pt-6">
                           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                             <div className="flex-1 space-y-2">
-                              <p className="text-lg font-semibold">{game.team1Name}</p>
+                              <div className="flex items-center gap-3 justify-center md:justify-start">
+                                {game.team1Logo ? (
+                                  <img src={game.team1Logo} alt={game.team1Name} className="h-9 w-9 rounded-full object-cover border border-border" />
+                                ) : null}
+                                <p className="text-lg font-semibold">{game.team1Name}</p>
+                              </div>
                               <p className="text-center text-muted-foreground font-bold">VS</p>
-                              <p className="text-lg font-semibold">{game.team2Name}</p>
+                              <div className="flex items-center gap-3 justify-center md:justify-start">
+                                {game.team2Logo ? (
+                                  <img src={game.team2Logo} alt={game.team2Name} className="h-9 w-9 rounded-full object-cover border border-border" />
+                                ) : null}
+                                <p className="text-lg font-semibold">{game.team2Name}</p>
+                              </div>
                             </div>
                             <div className="flex flex-col gap-2 text-muted-foreground min-w-[160px]">
                               <div className="flex items-center gap-2">
@@ -356,12 +372,22 @@ const Matches = () => {
                         <CardContent className="pt-6">
                           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                             <div className="flex-1 space-y-4">
-                              <div className="flex items-center justify-between">
-                                <span className="text-lg font-semibold">{game.team1Name}</span>
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                  {game.team1Logo ? (
+                                    <img src={game.team1Logo} alt={game.team1Name} className="h-9 w-9 rounded-full object-cover border border-border" />
+                                  ) : null}
+                                  <span className="text-lg font-semibold">{game.team1Name}</span>
+                                </div>
                                 <span className="text-2xl font-bold">{game.result?.homeScore ?? "—"}</span>
                               </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-lg font-semibold">{game.team2Name}</span>
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                  {game.team2Logo ? (
+                                    <img src={game.team2Logo} alt={game.team2Name} className="h-9 w-9 rounded-full object-cover border border-border" />
+                                  ) : null}
+                                  <span className="text-lg font-semibold">{game.team2Name}</span>
+                                </div>
                                 <span className="text-2xl font-bold">{game.result?.awayScore ?? "—"}</span>
                               </div>
                             </div>

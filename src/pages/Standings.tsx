@@ -12,6 +12,7 @@ const db = getFirestore(auth.app);
 interface Team {
   id: string;
   name: string;
+  logoUrl?: string;
 }
 
 interface GroupDoc {

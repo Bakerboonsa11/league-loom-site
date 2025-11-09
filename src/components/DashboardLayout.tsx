@@ -25,10 +25,11 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "./ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 const DashboardLayout = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -36,14 +37,26 @@ const DashboardLayout = () => {
     navigate("/auth");
   };
 
-  const mainNav = [
-    { to: "/", icon: <Home />, label: "Home" },
-    { to: "/teams", icon: <Shield />, label: "Teams" },
-    { to: "/matches", icon: <Gamepad2 />, label: "Matches" },
-    { to: "/standings", icon: <BarChart3 />, label: "Standings" },
-    { to: "/blog", icon: <FileText />, label: "Blog" },
-    { to: "/vlog", icon: <Video />, label: "Vlog" },
-  ];
+  const mainNav = useMemo(() => {
+    const baseNav = [
+      { to: "/", icon: <Home />, label: "Home" },
+      { to: "/teams", icon: <Shield />, label: "Teams" },
+      { to: "/matches", icon: <Gamepad2 />, label: "Matches" },
+      { to: "/standings", icon: <BarChart3 />, label: "Standings" },
+      { to: "/blog", icon: <FileText />, label: "Blog" },
+      { to: "/vlog", icon: <Video />, label: "Vlog" },
+    ];
+
+    if (user?.role === "admin") {
+      return [
+        ...baseNav,
+        { to: "/admin/blog", icon: <FileText />, label: "Admin Blog" },
+        { to: "/admin/vlog", icon: <Video />, label: "Admin Vlog" },
+      ];
+    }
+
+    return baseNav;
+  }, [user?.role]);
 
   return (
     <SidebarProvider>

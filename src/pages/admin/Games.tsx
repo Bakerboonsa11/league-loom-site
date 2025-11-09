@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -136,6 +137,7 @@ const AdminGamesPage = () => {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New Game</DialogTitle>
+                  <DialogDescription>Set up a matchup by selecting teams, scheduling, and status.</DialogDescription>
                 </DialogHeader>
                 <GameForm
                   onFinished={() => {
@@ -223,6 +225,7 @@ const AdminGamesPage = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Game</DialogTitle>
+            <DialogDescription>Update game scheduling, participants, or status as needed.</DialogDescription>
           </DialogHeader>
           {editingGame && (
             <GameForm
@@ -240,6 +243,7 @@ const AdminGamesPage = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Result for Game</DialogTitle>
+            <DialogDescription>Record the final score and statistics for this completed game.</DialogDescription>
           </DialogHeader>
           {addingResultGame && (
             <ResultForm

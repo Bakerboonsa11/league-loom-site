@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -132,6 +133,7 @@ const AdminTeamsPage = () => {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New Team</DialogTitle>
+                  <DialogDescription>Enter the team details to add them to the competition.</DialogDescription>
                 </DialogHeader>
                 <TeamForm
                   onFinished={() => {
@@ -211,6 +213,7 @@ const AdminTeamsPage = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Team</DialogTitle>
+            <DialogDescription>Update this team’s information and save your changes.</DialogDescription>
           </DialogHeader>
           {editingTeam && (
             <TeamForm
