@@ -432,7 +432,7 @@ const Index = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="flex flex-col sm:flex-row justify-center gap-6 max-w-5xl mx-auto">
+            <div className="flex flex-col items-center sm:flex-row sm:items-stretch justify-center gap-6 max-w-5xl mx-auto">
               {topScorers.map((scorer, index) => {
                 const initials = scorer.scorerName
                   .split(" ")
@@ -498,16 +498,37 @@ const Index = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-12 border-y border-border bg-card/50">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      <section className="relative py-16">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/10" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+        <div className="absolute inset-x-12 bottom-0 hidden md:block h-px bg-gradient-to-r from-transparent via-secondary/40 to-transparent" />
+        <div className="container relative mx-auto px-4">
+          <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat, index) => (
-              <div key={index} className="text-center space-y-2">
-                <div className="w-12 h-12 mx-auto bg-gradient-primary rounded-lg flex items-center justify-center shadow-glow-primary">
-                  <stat.icon className="w-6 h-6 text-primary-foreground" />
+              <div
+                key={index}
+                className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-card/70 p-6 shadow-[0_25px_60px_-40px_rgba(56,189,248,0.75)] backdrop-blur transition duration-500 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_35px_80px_-40px_rgba(56,189,248,0.95)]"
+              >
+                <div className="absolute -top-20 right-0 h-32 w-32 rounded-full bg-primary/15 blur-3xl transition-transform duration-500 group-hover:translate-y-4" />
+                <div className="absolute -bottom-24 left-0 h-40 w-40 rounded-full bg-secondary/15 blur-3xl transition-transform duration-500 group-hover:-translate-y-2" />
+
+                <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-secondary to-accent text-primary-foreground shadow-lg shadow-primary/40">
+                    <stat.icon className="h-6 w-6" />
+                    <span className="absolute inset-0 rounded-xl border border-white/20" />
+                  </div>
+                  <span className="text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-primary/70 text-center sm:text-right">
+                    {stat.label}
+                  </span>
                 </div>
-                <p className="text-3xl font-bold text-foreground">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
+
+                <p className="mt-6 text-4xl font-black tracking-tight text-foreground drop-shadow-md text-center sm:text-left">
+                  {stat.value}
+                </p>
+
+                <div className="mt-6 h-[1px] w-full overflow-hidden rounded-full bg-gradient-to-r from-transparent via-primary/30 to-transparent">
+                  <div className="h-full w-1/3 animate-pulse bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+                </div>
               </div>
             ))}
           </div>
