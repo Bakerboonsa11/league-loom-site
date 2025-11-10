@@ -57,6 +57,14 @@ service cloud.firestore {
       allow list: if true;
     }
 
+    match /cards/{cardId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /cards {
+      allow list: if true;
+    }
+
     match /unique_results/{resultId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -70,6 +78,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     match /unique_goals {
+      allow list: if true;
+    }
+
+    match /unique_cards/{cardId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /unique_cards {
       allow list: if true;
     }
 

@@ -440,6 +440,7 @@ const AdminGamesPage = () => {
           {addingResultGame && (
             <ResultForm
               gameId={addingResultGame.id}
+              cardsCollection="cards"
               onFinished={() => {
                 setAddingResultGame(null);
                 fetchGames();
@@ -488,6 +489,7 @@ const AdminGamesPage = () => {
               resultCollection="unique_results"
               goalsCollection="unique_goals"
               matchContext="round-off"
+              cardsCollection="unique_cards"
               onFinished={() => {
                 setAddingUniqueResultGame(null);
                 fetchGames();

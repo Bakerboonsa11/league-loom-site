@@ -36,14 +36,18 @@ const goalSchema = z.object({
   scorerId: z.string().min(1, "Scorer ID is required"),
 });
 
+const cardSchema = z.object({
+  team: z.enum(["home", "away"]),
+  playerName: z.string().min(1, "Player name is required"),
+  playerId: z.string().min(1, "Player ID is required"),
+});
+
 const formSchema = z.object({
   homeScore: z.coerce.number().min(0),
   awayScore: z.coerce.number().min(0),
-  homeYellowCards: z.coerce.number().min(0),
-  awayYellowCards: z.coerce.number().min(0),
-  homeRedCards: z.coerce.number().min(0),
-  awayRedCards: z.coerce.number().min(0),
   goals: z.array(goalSchema),
+  yellowCards: z.array(cardSchema),
+  redCards: z.array(cardSchema),
 });
 
 interface ResultFormProps {
@@ -53,6 +57,7 @@ interface ResultFormProps {
   resultCollection?: string;
   goalsCollection?: string;
   matchContext?: string;
+  cardsCollection?: string;
 }
 
 const ResultForm = ({
@@ -62,6 +67,7 @@ const ResultForm = ({
   resultCollection = "results",
   goalsCollection = "goals",
   matchContext,
+  cardsCollection = "cards",
 }: ResultFormProps) => {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
@@ -69,20 +75,34 @@ const ResultForm = ({
     defaultValues: {
       homeScore: 0,
       awayScore: 0,
-      homeYellowCards: 0,
-      awayYellowCards: 0,
-      homeRedCards: 0,
-      awayRedCards: 0,
       goals: [],
+      yellowCards: [],
+      redCards: [],
     },
   });
   const { fields: goalFields, append: appendGoal, remove: removeGoal } = useFieldArray({
     control: form.control,
     name: "goals",
   });
+  const {
+    fields: yellowCardFields,
+    append: appendYellowCard,
+    remove: removeYellowCard,
+  } = useFieldArray({
+    control: form.control,
+    name: "yellowCards",
+  });
+  const {
+    fields: redCardFields,
+    append: appendRedCard,
+    remove: removeRedCard,
+  } = useFieldArray({
+    control: form.control,
+    name: "redCards",
+  });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const { goals, homeScore, awayScore, homeYellowCards, awayYellowCards, homeRedCards, awayRedCards } = values;
+    const { goals, homeScore, awayScore, yellowCards, redCards } = values;
 
     const normalizedGoals = goals.map((goal) => ({
       ...goal,
@@ -90,11 +110,31 @@ const ResultForm = ({
       scorerId: goal.scorerId.trim(),
     }));
 
-    const uniqueScorerIds = Array.from(new Set(normalizedGoals.map((goal) => goal.scorerId).filter((id) => id.length > 0)));
+    const normalizedYellowCards = yellowCards.map((card) => ({
+      ...card,
+      playerName: card.playerName.trim(),
+      playerId: card.playerId.trim(),
+    }));
+
+    const normalizedRedCards = redCards.map((card) => ({
+      ...card,
+      playerName: card.playerName.trim(),
+      playerId: card.playerId.trim(),
+    }));
+
+    const uniqueParticipantIds = Array.from(
+      new Set(
+        [
+          ...normalizedGoals.map((goal) => goal.scorerId),
+          ...normalizedYellowCards.map((card) => card.playerId),
+          ...normalizedRedCards.map((card) => card.playerId),
+        ].filter((id) => id.length > 0),
+      ),
+    );
 
     const scorerPhotoMap = new Map<string, string>();
-    for (let i = 0; i < uniqueScorerIds.length; i += 10) {
-      const chunk = uniqueScorerIds.slice(i, i + 10);
+    for (let i = 0; i < uniqueParticipantIds.length; i += 10) {
+      const chunk = uniqueParticipantIds.slice(i, i + 10);
       try {
         const scorerQuery = query(collection(db, "users"), where("userId", "in", chunk));
         const snapshot = await getDocs(scorerQuery);
@@ -142,6 +182,11 @@ const ResultForm = ({
       const resultRef = doc(db, resultCollection, gameId);
       const existingResultSnap = await getDoc(resultRef);
       const timestamp = serverTimestamp();
+
+      const homeYellowCards = normalizedYellowCards.filter((card) => card.team === "home").length;
+      const awayYellowCards = normalizedYellowCards.filter((card) => card.team === "away").length;
+      const homeRedCards = normalizedRedCards.filter((card) => card.team === "home").length;
+      const awayRedCards = normalizedRedCards.filter((card) => card.team === "away").length;
 
       const baseResultData = {
         gameId,
@@ -215,6 +260,49 @@ const ResultForm = ({
         );
       }
 
+      const cardsCollectionRef = collection(db, cardsCollection);
+      const existingCardsSnap = await getDocs(query(cardsCollectionRef, where("gameId", "==", gameId)));
+      if (!existingCardsSnap.empty) {
+        await Promise.all(existingCardsSnap.docs.map((docSnap) => deleteDoc(docSnap.ref)));
+      }
+
+      const combinedCards = [
+        ...normalizedYellowCards.map((card) => ({ ...card, cardType: "yellow" as const })),
+        ...normalizedRedCards.map((card) => ({ ...card, cardType: "red" as const })),
+      ];
+
+      if (combinedCards.length > 0) {
+        await Promise.all(
+          combinedCards.map((card) => {
+            const isHomeCard = card.team === "home";
+            const teamRef = isHomeCard ? homeTeamRef : awayTeamRef;
+            const playerPhotoUrl = scorerPhotoMap.get(card.playerId);
+            const cardPayload: Record<string, unknown> = {
+              gameId,
+              resultId: resultRef.id,
+              teamSide: card.team,
+              teamRef,
+              teamId: teamRef.id,
+              playerName: card.playerName,
+              playerId: card.playerId,
+              cardType: card.cardType,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            };
+
+            if (playerPhotoUrl) {
+              cardPayload.playerPhotoUrl = playerPhotoUrl;
+            }
+
+            if (matchContext) {
+              cardPayload.matchContext = matchContext;
+            }
+
+            return addDoc(cardsCollectionRef, cardPayload);
+          }),
+        );
+      }
+
       toast({
         title: "Result saved",
         description: "The game result has been successfully recorded.",
@@ -261,61 +349,141 @@ const ResultForm = ({
             )}
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="homeYellowCards"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Home Yellow Cards</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="awayYellowCards"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Away Yellow Cards</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <FormLabel>Yellow Cards</FormLabel>
+            <Button type="button" variant="outline" onClick={() => appendYellowCard({ team: "home", playerName: "", playerId: "" })}>
+              Add Yellow Card
+            </Button>
+          </div>
+          {yellowCardFields.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No yellow cards recorded yet.</p>
+          ) : (
+            yellowCardFields.map((field, index) => (
+              <div key={field.id} className="grid gap-3 md:grid-cols-4 md:items-end">
+                <FormField
+                  control={form.control}
+                  name={`yellowCards.${index}.team`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Team</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select team" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="home">Home</SelectItem>
+                          <SelectItem value="away">Away</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`yellowCards.${index}.playerName`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Player name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Player name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`yellowCards.${index}.playerId`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Player ID</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Player ID" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end md:justify-start">
+                  <Button type="button" variant="destructive" onClick={() => removeYellowCard(index)}>
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="homeRedCards"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Home Red Cards</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="awayRedCards"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Away Red Cards</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <FormLabel>Red Cards</FormLabel>
+            <Button type="button" variant="outline" onClick={() => appendRedCard({ team: "home", playerName: "", playerId: "" })}>
+              Add Red Card
+            </Button>
+          </div>
+          {redCardFields.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No red cards recorded yet.</p>
+          ) : (
+            redCardFields.map((field, index) => (
+              <div key={field.id} className="grid gap-3 md:grid-cols-4 md:items-end">
+                <FormField
+                  control={form.control}
+                  name={`redCards.${index}.team`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Team</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select team" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="home">Home</SelectItem>
+                          <SelectItem value="away">Away</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`redCards.${index}.playerName`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Player name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Player name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`redCards.${index}.playerId`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Player ID</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Player ID" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end md:justify-start">
+                  <Button type="button" variant="destructive" onClick={() => removeRedCard(index)}>
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
