@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getFirestore, collection, getDocs, doc, addDoc } from "firebase/firestore";
+import { getFirestore, collection, getDocs, doc, addDoc, where, query } from "firebase/firestore";
 import { auth } from "@/firebase";
 import {
   Table,
@@ -30,6 +30,7 @@ const sports = ["Valorant", "League of Legends", "CS:GO", "Overwatch", "Rocket L
 const PlayerSelectionPage = () => {
   const { user: adminUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
+  const [players, setPlayers] = useState<Array<{ id: string; userId: string; fullName: string; email?: string; college?: string; department?: string; year?: string; teamId?: string; teamName?: string; assignedBy?: string; assignedAt?: string; status?: string }>>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,13 +48,46 @@ const PlayerSelectionPage = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const usersCollection = collection(db, "users");
-        const usersSnapshot = await getDocs(usersCollection);
-        const usersList = usersSnapshot.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() } as User)
-        );
+        // Fetch current-year active players
+        const playersCol = collection(db, "players");
+        const snap = await getDocs(query(playersCol, where("status", "==", "active")));
+        const currentYear = new Date().getFullYear();
+        const playerRows = snap.docs
+          .map(d => ({ id: d.id, ...(d.data() as any) }))
+          .filter(p => {
+            const dt = p.assignedAt ? new Date(p.assignedAt) : null;
+            return dt ? dt.getFullYear() === currentYear : true;
+          })
+          .map(p => ({
+            id: p.id,
+            userId: p.userId,
+            fullName: p.fullName || p.scorerName || "",
+            email: p.email,
+            college: p.college,
+            department: p.department,
+            year: p.year,
+            teamId: p.teamId,
+            teamName: p.teamName,
+            assignedBy: p.assignedBy,
+            assignedAt: p.assignedAt,
+            status: p.status,
+          }));
+        setPlayers(playerRows);
+
+        // Keep original selection logic: map players to users for selection/saving
+        const usersList: User[] = playerRows.map(p => ({
+          id: p.userId,
+          email: p.email || "",
+          name: p.fullName || "",
+          role: "player",
+          college: p.college || "",
+          department: p.department || "",
+          userId: p.userId,
+          photoUrl: "",
+        }));
         setUsers(usersList);
 
+        // Fetch teams for combobox
         const teamsCollection = collection(db, "teams");
         const teamsSnapshot = await getDocs(teamsCollection);
         const teamsList = teamsSnapshot.docs.map(
@@ -133,11 +167,12 @@ const PlayerSelectionPage = () => {
 
   return (
     <div className="p-4 md:p-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Player Selection</CardTitle>
+      <Card className="border-0 shadow-lg overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-indigo-700 via-violet-600 to-fuchsia-600 text-white">
+          <CardTitle className="text-xl md:text-2xl">Player Selection</CardTitle>
+          <p className="text-white/90 text-sm">Viewing active players (current year)</p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4 p-4 md:p-6">
           <div className="grid md:grid-cols-3 gap-4 mb-4">
             <Input
               placeholder="Filter by name..."
@@ -164,7 +199,7 @@ const PlayerSelectionPage = () => {
               className="md:col-span-2"
             />
             <Select onValueChange={setSelectedSport}>
-              <SelectTrigger>
+              <SelectTrigger className="border-violet-300 focus:ring-violet-500 focus:border-violet-500">
                 <SelectValue placeholder="Select a sport (optional)" />
               </SelectTrigger>
               <SelectContent>
@@ -184,12 +219,12 @@ const PlayerSelectionPage = () => {
             </Button>
           </div>
 
-          {isLoading && <p>Loading users...</p>}
+          {isLoading && <p>Loading players...</p>}
           {error && <p className="text-destructive">{error}</p>}
           {!isLoading && !error && (
-            <div className="rounded-md border">
+            <div className="rounded-lg border shadow-sm overflow-hidden">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-muted/40">
                   <TableRow>
                     <TableHead className="w-[50px]">
                       <Checkbox
@@ -197,27 +232,45 @@ const PlayerSelectionPage = () => {
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>College</TableHead>
-                    <TableHead>Role</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide">Name</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide">Email</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide">College</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide">Team</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide">Assigned</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id} data-state={selectedUsers.includes(user.id) && "selected"}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedUsers.includes(user.id)}
-                          onCheckedChange={() => toggleUserSelection(user.id)}
-                        />
-                      </TableCell>
-                      <TableCell>{user.name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.college}</TableCell>
-                      <TableCell>{user.role}</TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredUsers.map((user) => {
+                    const player = players.find(p => p.userId === user.id);
+                    return (
+                      <TableRow key={user.id} data-state={selectedUsers.includes(user.id) && "selected"} className="even:bg-muted/20 hover:bg-muted/40 transition-colors">
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedUsers.includes(user.id)}
+                            onCheckedChange={() => toggleUserSelection(user.id)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-xs text-muted-foreground">{user.id}</div>
+                        </TableCell>
+                        <TableCell className="text-sm">{user.email}</TableCell>
+                        <TableCell className="text-sm">{user.college}</TableCell>
+                        <TableCell className="text-sm">{player?.teamName || '-'}</TableCell>
+                        <TableCell className="text-sm">{player?.assignedAt ? new Date(player.assignedAt).toLocaleString() : '-'}</TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ${
+                            player?.status === 'active'
+                              ? 'bg-violet-50 text-violet-700 ring-violet-200'
+                              : 'bg-slate-50 text-slate-700 ring-slate-200'
+                          }`}>
+                            {player?.status || '-'}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

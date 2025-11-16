@@ -1,31 +1,65 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    function isCollegeHead() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'collageHead';
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSameCollege(resourceCollege) {
+      return isSignedIn() && resourceCollege == getUserData().college;
+    }
+
+    // Users collection
     match /users/{userId} {
       allow create: if isSignedIn() && request.auth.uid == userId;
-      allow read: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+      allow read: if (isSignedIn() && request.auth.uid == userId) || isAdmin() || 
+                 (isCollegeHead() && isSameCollege(resource.data.college));
       allow update: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
       allow delete: if isAdmin();
     }
+    
     match /users {
-      allow list: if isAdmin();
+      allow list: if isAdmin() || isCollegeHead();
     }
 
+    // Teams collection
     match /teams/{teamId} {
       allow read: if true;
-      allow write, delete: if isAdmin();
+      allow create, update: if isAdmin() || 
+                           (isCollegeHead() && isSameCollege(request.resource.data.collegeName));
+      allow delete: if isAdmin();
     }
+    
     match /teams {
       allow list: if true;
+    }
+    
+    // Players collection
+    match /players/{playerId} {
+      allow read: if isSignedIn();
+      allow create: if isCollegeHead() && 
+                   isSameCollege(request.resource.data.college) &&
+                   request.resource.data.assignedBy == request.auth.uid;
+      allow update, delete: if isAdmin() || 
+                            (isCollegeHead() && 
+                             request.resource.data.assignedBy == request.auth.uid);
+    }
+    
+    match /players {
+      allow list: if isSignedIn();
     }
 
     match /games/{gameId} {

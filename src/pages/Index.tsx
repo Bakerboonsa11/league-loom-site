@@ -369,10 +369,10 @@ const Index = () => {
   ];
 
   const sponsors = [
-    { name: "Haramaya Alumni Association", logo: "https://res.cloudinary.com/dg2kyhuh0/image/upload/v1731001234/league-loom/sponsor-alumni.png" },
-    { name: "Oromia Coffee", logo: "https://res.cloudinary.com/dg2kyhuh0/image/upload/v1731001234/league-loom/sponsor-coffee.png" },
-    { name: "Green Fields Agro", logo: "https://res.cloudinary.com/dg2kyhuh0/image/upload/v1731001234/league-loom/sponsor-agro.png" },
-    { name: "Hornet Telecom", logo: "https://res.cloudinary.com/dg2kyhuh0/image/upload/v1731001234/league-loom/sponsor-telecom.png" },
+    { name: "Sponsor 1", logo: "/sponsur1.png" },
+    { name: "Sponsor 2", logo: "/sponsur2.png" },
+    { name: "Sponsor 3", logo: "/sponsur3.jpeg" },
+    { name: "Sponsor 4", logo: "/sponsur4.png" },
   ];
 
   return (
@@ -692,26 +692,35 @@ const Index = () => {
       </section>
 
       {/* Sponsors Section */}
-      <section className="py-16 bg-card/30 border-y border-border">
+      <section className="py-16 bg-gradient-to-b from-background via-card/40 to-background border-y border-border/60">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl font-bold mb-2">Our Partners</h2>
+          <div className="text-center mb-12 space-y-2">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-700 via-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
+              Our Partners
+            </h2>
             <p className="text-muted-foreground">Trusted by leading brands in esports and education</p>
           </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto items-center">
-            {sponsors.map((sponsor, index) => (
-              <div 
-                key={index} 
-                className="flex items-center justify-center p-6 bg-background rounded-lg hover:shadow-lg transition-shadow grayscale hover:grayscale-0"
-              >
-                <img 
-                  src={sponsor.logo} 
-                  alt={sponsor.name}
-                  className="w-full h-12 object-contain opacity-60 hover:opacity-100 transition-opacity"
-                />
-              </div>
-            ))}
+
+          <div className="relative max-w-5xl mx-auto">
+            <div className="pointer-events-none absolute -inset-x-6 -inset-y-4 rounded-3xl bg-gradient-to-r from-indigo-500/10 via-violet-500/10 to-fuchsia-500/10 blur-2xl" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-5 md:gap-6 relative">
+              {sponsors.map((sponsor, index) => (
+                <div
+                  key={index}
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm shadow-[0_12px_40px_-20px_rgba(0,0,0,0.35)] hover:shadow-[0_16px_48px_-16px_rgba(0,0,0,0.45)] transition-all duration-300"
+                >
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-indigo-500/10 via-violet-500/10 to-fuchsia-500/10" />
+                  <div className="relative aspect-[3/1] flex items-center justify-center p-4">
+                    <img
+                      src={sponsor.logo}
+                      alt={sponsor.name}
+                      className="max-h-12 w-full object-contain grayscale group-hover:grayscale-0 opacity-70 group-hover:opacity-100 transition duration-300"
+                    />
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
