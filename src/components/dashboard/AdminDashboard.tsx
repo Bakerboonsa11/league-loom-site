@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Link } from "react-router-dom";
-import { Users, Gamepad2, BarChart3, Video, FileText, Shield, User, UserCheck, Eye, Layers, Trophy } from "lucide-react";
+import { Users, Gamepad2, BarChart3, Video, FileText, Shield, User, UserCheck, Eye, Layers, Trophy, CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
-import { collection, getDocs, getFirestore } from "firebase/firestore";
+import { collection, getDocs, getFirestore, addDoc, serverTimestamp } from "firebase/firestore";
 import { auth } from "@/firebase";
 
 const data = [
@@ -54,6 +55,29 @@ const AdminDashboard = () => {
   const [userCount, setUserCount] = useState<number | null>(null);
   const [collegeCount, setCollegeCount] = useState<number | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [liveText, setLiveText] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const postLiveText = async () => {
+    const text = liveText.trim();
+    if (!text) return;
+    try {
+      await addDoc(collection(db, "live_texts"), {
+        text,
+        createdAt: serverTimestamp(),
+      });
+      setLiveText("");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 1600);
+    } catch (e) {
+      // silent fail for now
+      // console.error("Failed to post live text", e);
+    }
+  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await postLiveText();
+  };
 
   useEffect(() => {
     const fetchTopScorers = async () => {
@@ -175,6 +199,37 @@ const AdminDashboard = () => {
           />
         </div>
       </section>
+
+      <Card className="border-border/40 bg-background/70 backdrop-blur-xl">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl font-semibold bg-gradient-to-r from-rose-500 via-orange-400 to-yellow-400 bg-clip-text text-transparent">
+              Live Text
+            </CardTitle>
+            <span className="text-xs uppercase tracking-[0.45em] text-muted-foreground">Live Look</span>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-2">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-center" aria-live="polite">
+            <Input
+              placeholder="Type a live update (e.g., Goal for CCI!)"
+              value={liveText}
+              onChange={(e) => setLiveText(e.target.value)}
+            />
+            <div className="flex items-center gap-2 sm:ml-2">
+              <Button type="submit" disabled={!liveText.trim()}>
+                Post Live
+              </Button>
+              {showSuccess && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/50 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300 backdrop-blur animate-in fade-in duration-200">
+                  <CheckCircle className="h-3.5 w-3.5" /> Posted
+                </span>
+              )}
+            </div>
+          </form>
+          <p className="mt-2 text-xs text-muted-foreground">Posts appear on the home page instantly and expire after 1 minute.</p>
+        </CardContent>
+      </Card>
 
       <Card className="border-border/40 bg-background/70 backdrop-blur-xl shadow-[0_30px_60px_-30px_rgba(59,130,246,0.45)]">
         <CardHeader className="pb-0">

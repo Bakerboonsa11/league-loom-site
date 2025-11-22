@@ -92,6 +92,18 @@ const formatLocalTime = (date: Date) =>
     hour12: false,
   }).format(date);
 
+// Normalize time label to use 'LT' instead of AM/PM and ensure LT is present
+const toLT = (label: string | null | undefined): string | null => {
+  if (!label) return label ?? null;
+  let t = String(label);
+  t = t.replace(/\b(AM|PM)\b/gi, "LT");
+  t = t.replace(/\s*local time$/i, " LT");
+  if (!/\bLT\b/i.test(t)) {
+    t = `${t} LT`;
+  }
+  return t.replace(/\s+/g, " ").trim();
+};
+
 const formatDate = (date: Date | null) => {
   if (!date) return "TBD";
   return date.toLocaleDateString(undefined, {
@@ -103,7 +115,7 @@ const formatDate = (date: Date | null) => {
 
 const formatTime = (date: Date | null) => {
   if (!date) return "";
-  return `${formatLocalTime(date)} local time`;
+  return toLT(`${formatLocalTime(date)}`) ?? "";
 };
 
 const Matches = () => {
@@ -163,7 +175,7 @@ const Matches = () => {
         const team1 = (team1Id ? teamMap.get(team1Id) : undefined) ?? { id: team1Id ?? "", name: "TBD" };
         const team2 = (team2Id ? teamMap.get(team2Id) : undefined) ?? { id: team2Id ?? "", name: "TBD" };
         const result = resultMap.get(gameDoc.id);
-        const kickoffTime = data.kickoffTime ?? (dateValue ? `${formatLocalTime(dateValue)} local time` : null);
+        const kickoffTime = toLT(data.kickoffTime ?? (dateValue ? `${formatLocalTime(dateValue)}` : null));
         const location = data.location ?? data.venue ?? null;
         const goals = goalMap.get(gameDoc.id);
 

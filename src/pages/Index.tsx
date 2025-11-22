@@ -4,10 +4,11 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Users, Calendar, TrendingUp, Star, Quote, MapPin } from "lucide-react";
+import { Trophy, Users, Calendar, TrendingUp, Star, Quote, MapPin, ChevronUp, ChevronDown, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import heroBanner from "@/assets/hero-banner.jpg";
-import { collection, doc, getDoc, getDocs, getFirestore, Timestamp, query, where, type DocumentReference } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, getFirestore, Timestamp, query, where, onSnapshot, type DocumentReference } from "firebase/firestore";
 import { auth } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,18 @@ const formatLocalTime = (date: Date) =>
     hour12: false,
   }).format(date);
 
+// Normalize time label to use 'LT' instead of AM/PM and ensure LT is present
+const toLT = (label: string | null | undefined): string | null => {
+  if (!label) return label ?? null;
+  let t = String(label);
+  t = t.replace(/\b(AM|PM)\b/gi, "LT");
+  t = t.replace(/\s*local time$/i, " LT");
+  if (!/\bLT\b/i.test(t)) {
+    t = `${t} LT`;
+  }
+  return t.replace(/\s+/g, " ").trim();
+};
+
 const Index = () => {
   const [matches, setMatches] = useState<HighlightMatch[]>([]);
   const [teamsCount, setTeamsCount] = useState(0);
@@ -82,6 +95,9 @@ const Index = () => {
   const [isLoadingMatches, setIsLoadingMatches] = useState(true);
   const [matchesError, setMatchesError] = useState<string | null>(null);
   const [topScorers, setTopScorers] = useState<ScorerSummary[]>([]);
+  const [liveItems, setLiveItems] = useState<{ id: string; text: string; createdAt?: Date }[]>([]);
+  const [liveTick, setLiveTick] = useState<number>(0);
+  const [scrollIndex, setScrollIndex] = useState<number>(0);
 
   useEffect(() => {
     const fetchHomepageData = async () => {
@@ -139,8 +155,8 @@ const Index = () => {
                 })
               : "TBA";
 
-            const formattedKickoff =
-              data.kickoffTime ?? (dateValue ? `${formatLocalTime(dateValue)} local time` : null);
+            const formattedKickoffRaw = data.kickoffTime ?? (dateValue ? `${formatLocalTime(dateValue)}` : null);
+            const formattedKickoff = toLT(formattedKickoffRaw);
 
             return {
               id: gameDoc.id,
@@ -228,7 +244,7 @@ const Index = () => {
               } catch (fallbackError) {
                 console.warn(`Unable to fetch fallback avatar for scorer ${scorer.scorerId}`, fallbackError);
               }
-            }),
+            }), 
         );
 
         const sortedScorers = scorers
@@ -253,6 +269,76 @@ const Index = () => {
 
     void fetchHomepageData();
   }, []);
+
+  // Live texts subscription (last 60s visible)
+  useEffect(() => {
+    const ref = collection(db, "live_texts");
+    const unsub = onSnapshot(ref, (snap) => {
+      const items = snap.docs.map((d) => {
+        const data = d.data() as { text?: string; createdAt?: Timestamp | Date | string | null };
+        let created: Date | undefined;
+        const raw = data.createdAt as any;
+        if (raw?.toDate) created = raw.toDate();
+        else if (typeof raw === "string") created = new Date(raw);
+        else if (raw instanceof Date) created = raw;
+        return { id: d.id, text: data.text ?? "", createdAt: created };
+      })
+      // Sort newest first (client-side)
+      .sort((a, b) => {
+        const ta = a.createdAt?.getTime?.() ?? 0;
+        const tb = b.createdAt?.getTime?.() ?? 0;
+        return tb - ta;
+      });
+      // Debug aid: see incoming items (remove later if noisy)
+      try { console.debug("Live texts snapshot", items); } catch {}
+      setLiveItems(items);
+    });
+    // Fallback: initial fetch in case snapshot stalls
+    (async () => {
+      try {
+        const snap = await getDocs(ref);
+        const items = snap.docs
+          .map((d) => {
+            const data = d.data() as { text?: string; createdAt?: Timestamp | Date | string | null };
+            let created: Date | undefined;
+            const raw = data.createdAt as any;
+            if (raw?.toDate) created = raw.toDate();
+            else if (typeof raw === "string") created = new Date(raw);
+            else if (raw instanceof Date) created = raw;
+            return { id: d.id, text: data.text ?? "", createdAt: created };
+          })
+          .sort((a, b) => {
+            const ta = a.createdAt?.getTime?.() ?? 0;
+            const tb = b.createdAt?.getTime?.() ?? 0;
+            return tb - ta;
+          });
+        setLiveItems((prev) => (prev.length ? prev : items));
+      } catch (e) {
+        try { console.debug("Live texts initial fetch failed", e); } catch {}
+      }
+    })();
+    const interval = setInterval(() => setLiveTick((t) => t + 1), 5000);
+    return () => {
+      unsub();
+      clearInterval(interval);
+    };
+  }, []);
+
+  const visibleLive = useMemo(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = today.getMonth();
+    const d = today.getDate();
+    return liveItems.filter((it) => {
+      if (!it.createdAt) return false;
+      const dt = it.createdAt;
+      return dt.getFullYear() === y && dt.getMonth() === m && dt.getDate() === d;
+    });
+  }, [liveItems, liveTick]);
+
+  // No auto-motion; user controls via buttons
+
+  //
 
   const stats = useMemo(() => {
     return [
@@ -378,7 +464,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+      {/* Spacer to avoid overlap with fixed navbar */}
+      <div className="h-14 md:h-16" />
       {/* Hero Section */}
       <section className="relative pt-16 overflow-hidden">
         <div
@@ -415,6 +502,166 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Featured Matches - moved here right after Hero */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4">This Week on Haramaya Courts</h2>
+            <p className="text-muted-foreground text-lg">Catch the latest Hornet action lined up across our campuses.</p>
+          </div>
+          
+          {isLoadingMatches ? (
+            <div className="max-w-4xl mx-auto">
+              <Card className="border-dashed border-muted">
+                <CardContent className="py-10 text-center text-muted-foreground">Loading Haramaya fixtures…</CardContent>
+              </Card>
+            </div>
+          ) : matchesError ? (
+            <div className="max-w-4xl mx-auto">
+              <Card className="border-destructive/60">
+                <CardContent className="py-8 text-center text-destructive">{matchesError}</CardContent>
+              </Card>
+            </div>
+          ) : matches.length === 0 ? (
+            <div className="max-w-4xl mx-auto">
+              <Card className="border-dashed border-muted">
+                <CardContent className="py-10 text-center text-muted-foreground">
+                  No fixtures scheduled yet. Check back as Haramaya teams publish their next clashes.
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {matches.map((match) => (
+                <Card key={match.id} className="border-border bg-card/70 backdrop-blur">
+                  <CardHeader className="space-y-3">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{match.dateLabel}</span>
+                      <Badge variant={match.status === "Live" ? "secondary" : "outline"}>{match.status}</Badge>
+                    </div>
+                    <CardTitle className="text-xl text-center">
+                      {match.homeTeam} <span className="text-muted-foreground text-base">vs</span> {match.awayTeam}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">{match.venue ?? "Haramaya Campus Arena"}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {match.homeLogo ? (
+                          <img src={match.homeLogo} alt={match.homeTeam} className="h-12 w-12 rounded-full object-cover border border-border" />
+                        ) : null}
+                        <span className="text-2xl font-bold">VS</span>
+                        {match.awayLogo ? (
+                          <img src={match.awayLogo} alt={match.awayTeam} className="h-12 w-12 rounded-full object-cover border border-border" />
+                        ) : null}
+                      </div>
+                      <p className="text-lg font-semibold mt-1">{match.awayTeam}</p>
+                    </div>
+                    {(match.status === "Live" || match.status === "Finished") ? (
+                      <div className="flex items-center justify-center gap-6 text-2xl font-bold">
+                        <span>{match.homeScore ?? "-"}</span>
+                        <span className="text-sm text-muted-foreground">:</span>
+                        <span>{match.awayScore ?? "-"}</span>
+                      </div>
+                    ) : null}
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <span>{match.kickoffTime ?? "TBA"}</span>
+                      {match.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{match.location}</span>}
+                    </div>
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link to="/matches">Match Centre</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Live Look - ultra-styled card after Hero */}
+      <div className="relative z-30 py-6">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto max-w-5xl">
+            <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card/70 backdrop-blur shadow-[0_20px_45px_-25px_rgba(56,189,248,0.5)]">
+              <div className="flex items-center justify-between gap-4 px-4 sm:px-6 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                    Live Look
+                    <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5">{visibleLive.length}</span>
+                  </span>
+                </div>
+                <div className="text-xs sm:text-sm text-muted-foreground">Today</div>
+              </div>
+              <div className="relative h-[192px] overflow-hidden">
+                <motion.ul
+                  className="divide-y divide-border/60"
+                  animate={{ y: -1 * (scrollIndex * 48) }}
+                  transition={{ type: "spring", stiffness: 80, damping: 20 }}
+                >
+                  {visibleLive.length > 0 ? (
+                    visibleLive.map((item) => (
+                      <li key={item.id} className="h-12 px-4 sm:px-6 flex items-center gap-3">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span
+                          className="inline-flex max-w-[70%] items-center gap-2 rounded-full border border-primary/30 bg-gradient-to-r from-primary/15 via-secondary/10 to-accent/15 px-3 py-1.5 text-sm md:text-base font-medium text-foreground shadow-[0_8px_24px_-18px_rgba(56,189,248,0.6)] backdrop-blur transition-transform hover:scale-[1.02] hover:shadow-[0_10px_28px_-16px_rgba(56,189,248,0.75)]"
+                          title={item.text}
+                        >
+                          <span className="line-clamp-1">{item.text}</span>
+                        </span>
+                        <span className="ml-auto text-xs md:text-[13px] text-muted-foreground bg-muted/30 border border-border/60 rounded-md px-2 py-0.5 tabular-nums">
+                          {item.createdAt ? formatLocalTime(item.createdAt) : ""}
+                        </span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="h-12 px-4 sm:px-6 flex items-center text-sm italic text-muted-foreground">No live updates yet</li>
+                  )}
+                </motion.ul>
+                {/* Edge gradients */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-card/80 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-card/80 to-transparent" />
+
+                {/* Above/Below indicators */}
+                {scrollIndex > 0 ? (
+                  <div className="pointer-events-none absolute right-12 top-2 z-10 rounded-full border border-primary/40 bg-primary/10 backdrop-blur px-2.5 py-1 text-[10px] font-medium text-primary animate-pulse">
+                    {scrollIndex} earlier
+                  </div>
+                ) : null}
+                {Math.max(0, visibleLive.length - (scrollIndex + 4)) > 0 ? (
+                  <div className="pointer-events-none absolute right-12 bottom-12 z-10 rounded-full border border-primary/40 bg-primary/10 backdrop-blur px-2.5 py-1 text-[10px] font-medium text-primary animate-pulse">
+                    {Math.max(0, visibleLive.length - (scrollIndex + 4))} more below
+                  </div>
+                ) : null}
+
+                {/* Scroll controls - bottom-right */}
+                <div className="absolute right-2 bottom-2 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setScrollIndex((v) => Math.max(0, v - 1))}
+                    disabled={scrollIndex <= 0}
+                    className="h-9 w-9 rounded-full bg-background/70 border border-border backdrop-blur flex items-center justify-center hover:bg-background/90 disabled:opacity-50 shadow"
+                    aria-label="Scroll up"
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScrollIndex((v) => Math.min(Math.max(0, visibleLive.length - 4), v + 1))}
+                    disabled={scrollIndex >= Math.max(0, visibleLive.length - 4)}
+                    className="h-9 w-9 rounded-full bg-background/70 border border-border backdrop-blur flex items-center justify-center hover:bg-background/90 disabled:opacity-50 shadow"
+                    aria-label="Scroll down"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Top Scorers */}
       <section className="py-16 bg-gradient-to-b from-card/70 via-background to-background border-b border-border">
@@ -535,82 +782,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Matches */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">This Week on Haramaya Courts</h2>
-            <p className="text-muted-foreground text-lg">Catch the latest Hornet action lined up across our campuses.</p>
-          </div>
-          
-          {isLoadingMatches ? (
-            <div className="max-w-4xl mx-auto">
-              <Card className="border-dashed border-muted">
-                <CardContent className="py-10 text-center text-muted-foreground">Loading Haramaya fixtures…</CardContent>
-              </Card>
-            </div>
-          ) : matchesError ? (
-            <div className="max-w-4xl mx-auto">
-              <Card className="border-destructive/60">
-                <CardContent className="py-8 text-center text-destructive">{matchesError}</CardContent>
-              </Card>
-            </div>
-          ) : matches.length === 0 ? (
-            <div className="max-w-4xl mx-auto">
-              <Card className="border-dashed border-muted">
-                <CardContent className="py-10 text-center text-muted-foreground">
-                  No fixtures scheduled yet. Check back as Haramaya teams publish their next clashes.
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {matches.map((match) => (
-                <Card key={match.id} className="border-border bg-card/70 backdrop-blur">
-                  <CardHeader className="space-y-3">
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{match.dateLabel}</span>
-                      <Badge variant={match.status === "Live" ? "secondary" : "outline"}>{match.status}</Badge>
-                    </div>
-                    <CardTitle className="text-xl text-center">
-                      {match.homeTeam} <span className="text-muted-foreground text-base">vs</span> {match.awayTeam}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">{match.venue ?? "Haramaya Campus Arena"}</p>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {match.homeLogo ? (
-                          <img src={match.homeLogo} alt={match.homeTeam} className="h-12 w-12 rounded-full object-cover border border-border" />
-                        ) : null}
-                        <span className="text-2xl font-bold">VS</span>
-                        {match.awayLogo ? (
-                          <img src={match.awayLogo} alt={match.awayTeam} className="h-12 w-12 rounded-full object-cover border border-border" />
-                        ) : null}
-                      </div>
-                      <p className="text-lg font-semibold mt-1">{match.awayTeam}</p>
-                    </div>
-                    {match.status === "Live" || match.status === "Finished" ? (
-                      <div className="flex items-center justify-center gap-6 text-2xl font-bold">
-                        <span>{match.homeScore ?? "-"}</span>
-                        <span className="text-sm text-muted-foreground">:</span>
-                        <span>{match.awayScore ?? "-"}</span>
-                      </div>
-                    ) : null}
-                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <span>{match.kickoffTime ?? "TBA"}</span>
-                      {match.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{match.location}</span>}
-                    </div>
-                    <Button variant="outline" className="w-full" asChild>
-                      <Link to="/matches">Match Centre</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
 
       {/* Gallery Section */}
       <section className="py-16 bg-card/30">

@@ -78,15 +78,13 @@ const AssignStudentToTeam = () => {
       try {
         setLoading(true);
         
-        // Fetch teams from the same college
+        // Fetch teams and filter by normalized college name (case/whitespace insensitive)
         const teamsRef = collection(db, "teams");
-        const teamsQuery = query(teamsRef, where("collegeName", "==", self.college));
-        const teamsSnapshot = await getDocs(teamsQuery);
-        
-        const teamsData = teamsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Team[];
+        const allTeamsSnap = await getDocs(teamsRef);
+        const normCollege = (self.college || "").trim().toLowerCase();
+        const teamsData = allTeamsSnap.docs
+          .map(d => ({ id: d.id, ...(d.data() as any) }))
+          .filter(t => ((t.collegeName || "").trim().toLowerCase()) === normCollege) as Team[];
         
         setTeams(teamsData);
         
