@@ -25,6 +25,7 @@ import AdminGroupPage from "./pages/admin/group";
 import AdminBlogManager from "./pages/admin/BlogManager";
 import AdminVlogManager from "./pages/admin/VlogManager";
 import RoundOff from "./pages/RoundOff";
+import InstallPrompt from "./components/InstallPrompt";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <InstallPrompt />
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/teams" element={<Teams />} />
@@ -65,3 +67,4 @@ const App = () => (
 );
 
 export default App;
+
