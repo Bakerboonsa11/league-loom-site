@@ -107,12 +107,13 @@ const Index = () => {
       setMatchesError(null);
 
       try {
-        const [teamsSnapshot, gamesSnapshot, resultsSnapshot, goalsSnapshot, uniqueGoalsSnapshot] = await Promise.all([
+        const [teamsSnapshot, gamesSnapshot, resultsSnapshot, goalsSnapshot, uniqueGoalsSnapshot, liveResultsSnapshot] = await Promise.all([
           getDocs(collection(db, "teams")),
           getDocs(collection(db, "games")),
           getDocs(collection(db, "results")),
           getDocs(collection(db, "goals")),
           getDocs(collection(db, "unique_goals")),
+          getDocs(collection(db, "live_results")),
         ]);
 
         setTeamsCount(teamsSnapshot.size);
@@ -140,6 +141,12 @@ const Index = () => {
           resultMap.set(resultDoc.id, resultDoc.data() as ResultDoc);
         });
 
+        const liveResultMap = new Map<string, { homeScore?: number; awayScore?: number }>();
+        liveResultsSnapshot.docs.forEach((docSnap) => {
+          const data = docSnap.data() as { homeScore?: number; awayScore?: number };
+          liveResultMap.set(docSnap.id, data);
+        });
+
         const highlightMatches: HighlightMatch[] = gamesSnapshot.docs
           .map((gameDoc) => {
             const data = gameDoc.data() as GameDoc;
@@ -149,6 +156,7 @@ const Index = () => {
             const team1 = (team1Id ? teamMap.get(team1Id) : undefined) ?? { id: team1Id ?? "", name: "TBD" };
             const team2 = (team2Id ? teamMap.get(team2Id) : undefined) ?? { id: team2Id ?? "", name: "TBD" };
             const result = resultMap.get(gameDoc.id);
+            const liveResult = (data.status ?? "Upcoming") === "Live" ? liveResultMap.get(gameDoc.id) : undefined;
 
             const dateLabel = dateValue
               ? dateValue.toLocaleDateString(undefined, {
@@ -169,8 +177,8 @@ const Index = () => {
               venue: data.venue ?? data.location ?? null,
               location: data.location ?? data.venue ?? null,
               kickoffTime: formattedKickoff,
-              homeScore: result?.homeScore ?? null,
-              awayScore: result?.awayScore ?? null,
+              homeScore: liveResult?.homeScore ?? result?.homeScore ?? null,
+              awayScore: liveResult?.awayScore ?? result?.awayScore ?? null,
               homeLogo: team1?.logoUrl ?? null,
               awayLogo: team2?.logoUrl ?? null,
             } satisfies HighlightMatch;
@@ -522,6 +530,70 @@ const Index = () => {
                 </Button>
               </Link>
             </div>
+
+            {/* Live Now inside Hero */}
+            {(() => {
+              const liveMatches = matches.filter((m) => m.status === "Live");
+              if (liveMatches.length === 0) return null;
+              const top = liveMatches.slice(0, 2);
+              return (
+                <div className="relative mt-8 mx-auto max-w-3xl overflow-hidden rounded-2xl border border-rose-400/30 bg-gradient-to-br from-background/80 via-background/60 to-background/80 backdrop-blur-xl shadow-[0_40px_90px_-45px_rgba(244,63,94,0.5)]">
+                  <div className="pointer-events-none absolute -top-24 -left-24 h-56 w-56 rounded-full bg-rose-500/25 blur-3xl" />
+                  <div className="pointer-events-none absolute -bottom-24 -right-24 h-56 w-56 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                  <div className="relative px-4 sm:px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-rose-400/50 bg-rose-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-rose-300">
+                        <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
+                        Live Now
+                      </span>
+                      <Badge variant="secondary" className="bg-rose-500/15 text-rose-200 border-rose-400/30">
+                        {liveMatches.length} Live
+                      </Badge>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 gap-3">
+                      {top.map((m) => (
+                        <Card key={m.id} className="border border-border/60 bg-background/70 backdrop-blur group">
+                          <CardHeader className="relative pb-2">
+                            <div className="flex items-center justify-between text-[12px] text-muted-foreground">
+                              <span>{m.dateLabel}</span>
+                              <span className="inline-flex items-center gap-2 rounded-full border border-rose-400/50 bg-rose-500/10 px-2 py-0.5 text-[11px] font-semibold text-rose-300">
+                                <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse" />
+                                Live
+                              </span>
+                            </div>
+                            <CardTitle className="text-lg text-center">
+                              <span className="font-semibold">{m.homeTeam}</span>
+                              <span className="mx-2 text-muted-foreground text-base">vs</span>
+                              <span className="font-semibold">{m.awayTeam}</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="relative">
+                            <div className="flex items-center justify-center gap-6 text-3xl font-black tracking-tight">
+                              <span className="text-foreground">{m.homeScore ?? "-"}</span>
+                              <span className="text-rose-400 text-2xl">:</span>
+                              <span className="text-foreground">{m.awayScore ?? "-"}</span>
+                            </div>
+                            <div className="mt-2 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                              <span>{m.kickoffTime ?? "Live"}</span>
+                              {m.location && (
+                                <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{m.location}</span>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex justify-center">
+                      <Link to="/matches">
+                        <Button size="sm" variant="secondary" className="border-rose-400/30 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25">
+                          Open Match Centre
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </section>
@@ -612,6 +684,8 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      
 
       {/* Featured Matches - after Golden Boot */}
       {(isLoadingMatches || matchesError || matches.length > 0) && (

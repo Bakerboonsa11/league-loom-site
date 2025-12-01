@@ -374,17 +374,30 @@ const Standings = () => {
                       <div className="text-center">GD</div>
                       <div className="text-center">Pts</div>
                     </div>
-                    {group.rows.map((team, index) => (
+                    {(() => {
+                      const tieAwareRanks = new Map<string, number>();
+                      let last: { points: number; gd: number; gf: number; fairPlay: number } | null = null;
+                      let lastRank = 0;
+                      group.rows.forEach((row, idx) => {
+                        const position = idx + 1;
+                        const current = { points: row.points, gd: row.gd, gf: row.gf, fairPlay: row.fairPlay };
+                        const isTie = !!last && current.points === last.points && current.gd === last.gd && current.gf === last.gf && current.fairPlay === last.fairPlay;
+                        const rank = isTie ? lastRank : position;
+                        tieAwareRanks.set(row.teamId, rank);
+                        last = current;
+                        lastRank = rank;
+                      });
+                      return group.rows.map((team, index) => {
+                        const rank = tieAwareRanks.get(team.teamId) ?? index + 1;
+                        return (
                       <div
                         key={team.teamId}
-                        className={`p-4 hover:bg-muted/20 transition-colors ${
-                          index === 0 ? "bg-primary/5" : ""
-                        }`}
+                        className={`p-4 hover:bg-muted/20 transition-colors ${rank === 1 ? "bg-primary/5" : ""}`}
                       >
                         <div className="grid md:grid-cols-11 md:gap-4 items-center gap-3">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-lg">{index + 1}</span>
-                            {index === 0 && <Trophy className="w-5 h-5 text-secondary" />}
+                            <span className="font-bold text-lg">{rank}</span>
+                            {rank === 1 && <Trophy className="w-5 h-5 text-secondary" />}
                           </div>
                           <div className="md:col-span-2 flex items-center gap-3 font-semibold">
                             {team.teamLogo ? (
@@ -430,7 +443,9 @@ const Standings = () => {
                           <div className="flex justify-between"><span>Pts</span><span className="font-semibold text-primary">{team.points}</span></div>
                         </div>
                       </div>
-                    ))}
+                        );
+                      });
+                    })()}
                   </div>
                 )}
               </CardContent>

@@ -157,6 +157,7 @@ const AdminDashboard = () => {
     { to: "/admin/group", icon: <Layers className="h-5 w-5" />, label: "Create Group" },
     { to: "/admin/users", icon: <Users className="h-5 w-5" />, label: "Users" },
     { to: "/admin/games", icon: <Gamepad2 className="h-5 w-5" />, label: "Games" },
+    { to: "/admin/live-center", icon: <Eye className="h-5 w-5" />, label: "Live Center" },
     { to: "/admin/table-rank", icon: <BarChart3 className="h-5 w-5" />, label: "Table Rank" },
     { to: "/admin/vlog", icon: <Video className="h-5 w-5" />, label: "Manage Vlog" },
     { to: "/admin/blog", icon: <FileText className="h-5 w-5" />, label: "Manage Blog" },

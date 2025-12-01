@@ -130,11 +130,13 @@ const Matches = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [teamsSnapshot, gamesSnapshot, resultsSnapshot, goalsSnapshot] = await Promise.all([
+      const [teamsSnapshot, gamesSnapshot, resultsSnapshot, goalsSnapshot, liveResultsSnapshot, liveGoalsSnapshot] = await Promise.all([
         getDocs(collection(db, "teams")),
         getDocs(collection(db, "games")),
         getDocs(collection(db, "results")),
         getDocs(collection(db, "goals")),
+        getDocs(collection(db, "live_results")),
+        getDocs(collection(db, "live_goals")),
       ]);
 
       const teamMap = new Map<string, TeamDoc>();
@@ -146,6 +148,12 @@ const Matches = () => {
       const resultMap = new Map<string, ResultDoc>();
       resultsSnapshot.docs.forEach((resultDoc) => {
         resultMap.set(resultDoc.id, resultDoc.data() as ResultDoc);
+      });
+
+      const liveResultMap = new Map<string, { homeScore?: number; awayScore?: number }>();
+      liveResultsSnapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data() as { homeScore?: number; awayScore?: number };
+        liveResultMap.set(docSnap.id, data);
       });
 
       const goalMap = new Map<string, GameGoals>();
@@ -167,6 +175,25 @@ const Matches = () => {
         goalMap.set(data.gameId, entry);
       });
 
+      const liveGoalMap = new Map<string, GameGoals>();
+      liveGoalsSnapshot.docs.forEach((goalDoc) => {
+        const data = goalDoc.data() as GoalDoc;
+        if (!data.gameId || !data.teamSide || !data.scorerName) {
+          return;
+        }
+        const entry = liveGoalMap.get(data.gameId) ?? { home: [], away: [] };
+        const goalSummary: GoalSummary = {
+          scorerName: data.scorerName,
+          scorerPhotoUrl: data.scorerPhotoUrl,
+        };
+        if (data.teamSide === "home") {
+          entry.home.push(goalSummary);
+        } else {
+          entry.away.push(goalSummary);
+        }
+        liveGoalMap.set(data.gameId, entry);
+      });
+
       const gamesList: GameWithTeams[] = gamesSnapshot.docs.map((gameDoc) => {
         const data = gameDoc.data() as GameDoc;
         const dateValue = data.date instanceof Timestamp ? data.date.toDate() : data.date ? new Date(data.date) : null;
@@ -178,6 +205,11 @@ const Matches = () => {
         const kickoffTime = toLT(data.kickoffTime ?? (dateValue ? `${formatLocalTime(dateValue)}` : null));
         const location = data.location ?? data.venue ?? null;
         const goals = goalMap.get(gameDoc.id);
+
+        // Prefer live data when status is Live
+        const isLive = (data.status ?? "Upcoming") === "Live";
+        const liveResult = isLive ? liveResultMap.get(gameDoc.id) : undefined;
+        const liveGoals = isLive ? liveGoalMap.get(gameDoc.id) : undefined;
 
         return {
           id: gameDoc.id,
@@ -192,7 +224,12 @@ const Matches = () => {
           venue: data.venue ?? null,
           location,
           kickoffTime,
-          result: result
+          result: isLive
+            ? {
+                homeScore: liveResult?.homeScore ?? null,
+                awayScore: liveResult?.awayScore ?? null,
+              }
+            : result
             ? {
                 homeScore: result.homeScore ?? null,
                 awayScore: result.awayScore ?? null,
@@ -202,7 +239,9 @@ const Matches = () => {
                 awayRedCards: result.awayRedCards ?? null,
               }
             : null,
-          goals: goals && (goals.home.length > 0 || goals.away.length > 0) ? goals : null,
+          goals: isLive
+            ? liveGoals && (liveGoals.home.length > 0 || liveGoals.away.length > 0) ? liveGoals : null
+            : goals && (goals.home.length > 0 || goals.away.length > 0) ? goals : null,
         } satisfies GameWithTeams;
       });
 
@@ -340,12 +379,24 @@ const Matches = () => {
               </Card>
             </div>
           ) : (
-            <Tabs defaultValue="live" className="max-w-5xl mx-auto">
-              <TabsList className="grid w-full grid-cols-3 mb-8">
-                <TabsTrigger value="live">Live</TabsTrigger>
-                <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-                <TabsTrigger value="completed">Completed</TabsTrigger>
-              </TabsList>
+            <>
+              <div className="max-w-5xl mx-auto mb-4 flex flex-wrap items-center gap-2 text-xs">
+                <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-medium text-primary">
+                  Live <Badge variant="secondary" className="ml-1">{liveGames.length}</Badge>
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 font-medium text-accent-foreground">
+                  Upcoming <Badge variant="secondary" className="ml-1">{upcomingGames.length}</Badge>
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-muted-foreground/30 bg-muted/20 px-3 py-1 font-medium text-foreground">
+                  Finished <Badge variant="outline" className="ml-1">{completedGames.length}</Badge>
+                </span>
+              </div>
+              <Tabs defaultValue="live" className="max-w-5xl mx-auto">
+                <TabsList className="grid w-full grid-cols-3 mb-8">
+                  <TabsTrigger value="live">Live ({liveGames.length})</TabsTrigger>
+                  <TabsTrigger value="upcoming">Upcoming ({upcomingGames.length})</TabsTrigger>
+                  <TabsTrigger value="completed">Completed ({completedGames.length})</TabsTrigger>
+                </TabsList>
 
               <TabsContent value="live" className="space-y-6">
                 {liveGames.length === 0
@@ -489,6 +540,7 @@ const Matches = () => {
                     ))}
               </TabsContent>
             </Tabs>
+            </>
           )}
         </div>
       </div>

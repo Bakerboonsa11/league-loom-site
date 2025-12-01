@@ -123,6 +123,52 @@ service cloud.firestore {
       allow list: if true;
     }
 
+    // Live result collections (league)
+    match /live_results/{resultId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /live_results {
+      allow list: if true;
+    }
+    match /live_goals/{goalId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /live_goals {
+      allow list: if true;
+    }
+    match /live_cards/{cardId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /live_cards {
+      allow list: if true;
+    }
+
+    // Live result collections (round-off / unique)
+    match /unique_live_results/{resultId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /unique_live_results {
+      allow list: if true;
+    }
+    match /unique_live_goals/{goalId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /unique_live_goals {
+      allow list: if true;
+    }
+    match /unique_live_cards/{cardId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /unique_live_cards {
+      allow list: if true;
+    }
+
     match /userIds/{studentId} {
       allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
       allow read: if isSignedIn();

@@ -27,6 +27,7 @@ import AdminBlogManager from "./pages/admin/BlogManager";
 import AdminVlogManager from "./pages/admin/VlogManager";
 import RoundOff from "./pages/RoundOff";
 import InstallPrompt from "./components/InstallPrompt";
+import LiveCenter from "./pages/admin/LiveCenter";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="/admin/group" element={<AdminGroupPage />} />
             <Route path="/admin/blog" element={<AdminBlogManager />} />
             <Route path="/admin/vlog" element={<AdminVlogManager />} />
+            <Route path="/admin/live-center" element={<LiveCenter />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>
