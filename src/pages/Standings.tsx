@@ -45,6 +45,9 @@ interface StandingRow {
   ga: number;
   gd: number;
   points: number;
+  yellowCards: number;
+  redCards: number;
+  fairPlay: number; // lower is better: yellow=1, red=3
 }
 
 interface GroupStanding {
@@ -56,13 +59,12 @@ interface GroupStanding {
 
 const sortRows = (rows: StandingRow[]) =>
   rows.sort((a, b) => {
-    if (b.points !== a.points) {
-      return b.points - a.points;
-    }
-    if (b.gd !== a.gd) {
-      return b.gd - a.gd;
-    }
-    return b.gf - a.gf;
+    if (b.points !== a.points) return b.points - a.points;
+    if (b.gd !== a.gd) return b.gd - a.gd;
+    if (b.gf !== a.gf) return b.gf - a.gf;
+    // Fair play as final tiebreaker (like EPL): fewer card points rank higher
+    if (a.fairPlay !== b.fairPlay) return a.fairPlay - b.fairPlay;
+    return 0;
   });
 
 const Standings = () => {
@@ -116,6 +118,9 @@ const Standings = () => {
               ga: 0,
               gd: 0,
               points: 0,
+              yellowCards: 0,
+              redCards: 0,
+              fairPlay: 0,
             };
             if (!teamGroupIndex[teamId]) {
               teamGroupIndex[teamId] = new Set();
@@ -167,6 +172,9 @@ const Standings = () => {
               ga: 0,
               gd: 0,
               points: 0,
+              yellowCards: 0,
+              redCards: 0,
+              fairPlay: 0,
             };
           }
           return overallRows[teamId];
@@ -182,6 +190,10 @@ const Standings = () => {
 
           const homeScore = result.homeScore ?? 0;
           const awayScore = result.awayScore ?? 0;
+          const homeYC = (result as any).homeYellowCards ?? 0;
+          const awayYC = (result as any).awayYellowCards ?? 0;
+          const homeRC = (result as any).homeRedCards ?? 0;
+          const awayRC = (result as any).awayRedCards ?? 0;
 
           const derivedHomePoints = homeScore > awayScore ? 3 : homeScore < awayScore ? 0 : 1;
           const homePoints = result.homePoints ?? derivedHomePoints;
@@ -198,6 +210,9 @@ const Standings = () => {
           homeOverall.ga += awayScore;
           homeOverall.gd += homeScore - awayScore;
           homeOverall.points += homePoints;
+          homeOverall.yellowCards += homeYC;
+          homeOverall.redCards += homeRC;
+          homeOverall.fairPlay += homeYC * 1 + homeRC * 3;
 
           awayOverall.played += 1;
           awayOverall.won += awayPoints === 3 ? 1 : 0;
@@ -207,6 +222,9 @@ const Standings = () => {
           awayOverall.ga += homeScore;
           awayOverall.gd += awayScore - homeScore;
           awayOverall.points += awayPoints;
+          awayOverall.yellowCards += awayYC;
+          awayOverall.redCards += awayRC;
+          awayOverall.fairPlay += awayYC * 1 + awayRC * 3;
 
           const homeGroups = teamGroupIndex[homeTeamId];
           const awayGroups = teamGroupIndex[awayTeamId];
@@ -230,6 +248,9 @@ const Standings = () => {
             targetRowHome.ga += awayScore;
             targetRowHome.gd += homeScore - awayScore;
             targetRowHome.points += homePoints;
+            targetRowHome.yellowCards += homeYC;
+            targetRowHome.redCards += homeRC;
+            targetRowHome.fairPlay += homeYC * 1 + homeRC * 3;
 
             targetRowAway.played += 1;
             targetRowAway.won += awayPoints === 3 ? 1 : 0;
@@ -239,6 +260,9 @@ const Standings = () => {
             targetRowAway.ga += homeScore;
             targetRowAway.gd += awayScore - homeScore;
             targetRowAway.points += awayPoints;
+            targetRowAway.yellowCards += awayYC;
+            targetRowAway.redCards += awayRC;
+            targetRowAway.fairPlay += awayYC * 1 + awayRC * 3;
           });
         });
 
@@ -375,11 +399,16 @@ const Standings = () => {
                               </div>
                             )}
                             <span>{team.teamName}</span>
-                            {index < 3 && (
-                              <Badge variant="secondary" className="text-xs">
-                                Top {index + 1}
-                              </Badge>
-                            )}
+                            <span className="inline-flex items-center gap-2 text-xs font-normal text-muted-foreground ml-2">
+                              <span className="inline-flex items-center gap-1">
+                                <span className="inline-block h-3 w-2.5 rounded-[2px] bg-yellow-500 border border-yellow-600 shadow-sm" />
+                                {team.yellowCards}
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                <span className="inline-block h-3 w-2.5 rounded-[2px] bg-red-500 border border-red-700 shadow-sm" />
+                                {team.redCards}
+                              </span>
+                            </span>
                           </div>
                           <div className="hidden md:block text-center font-semibold text-primary">{team.played}</div>
                           <div className="hidden md:block text-center text-muted-foreground">{team.won}</div>
