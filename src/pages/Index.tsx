@@ -53,6 +53,8 @@ interface ScorerSummary {
   photoUrl?: string;
 }
 
+type RankedScorer = ScorerSummary & { rank: number };
+
 interface HighlightMatch {
   id: string;
   homeTeam: string;
@@ -348,6 +350,24 @@ const Index = () => {
       { icon: TrendingUp, label: "Season", value: new Date().getFullYear().toString() },
     ];
   }, [matchesCount, playersCount, teamsCount]);
+
+  const rankedTopScorers: RankedScorer[] = useMemo(() => {
+    // Ensure list is sorted by goals desc then name asc as setTopScorers does
+    const list = [...topScorers].sort((a, b) => {
+      const diff = b.goals - a.goals;
+      if (diff !== 0) return diff;
+      return a.scorerName.localeCompare(b.scorerName);
+    });
+    let lastGoals: number | null = null;
+    let lastRank = 0;
+    return list.map((s, idx) => {
+      const position = idx + 1;
+      const rank = lastGoals !== null && s.goals === lastGoals ? lastRank : position;
+      lastGoals = s.goals;
+      lastRank = rank;
+      return { ...s, rank } as RankedScorer;
+    });
+  }, [topScorers]);
 
   const galleryImages = [
     {
@@ -680,7 +700,7 @@ const Index = () => {
             </Card>
           ) : (
             <div className="flex flex-col items-center sm:flex-row sm:items-stretch justify-center gap-6 max-w-5xl mx-auto">
-              {topScorers.map((scorer, index) => {
+              {rankedTopScorers.map((scorer, index) => {
                 const initials = scorer.scorerName
                   .split(" ")
                   .map((part) => part.charAt(0).toUpperCase())
@@ -711,7 +731,7 @@ const Index = () => {
                     <div className="relative flex items-center gap-4">
                       <div className="flex flex-col items-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         <span className="text-[0.65rem]">Rank</span>
-                        <span className="text-3xl font-black text-foreground">#{index + 1}</span>
+                        <span className="text-3xl font-black text-foreground">#{scorer.rank}</span>
                       </div>
                       <Avatar className="h-14 w-14 border-2 border-background/40 shadow-inner">
                         {scorer.photoUrl ? (

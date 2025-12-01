@@ -93,10 +93,10 @@ const Navbar = () => {
                         {user.photoUrl ? (
                           <AvatarImage src={user.photoUrl} alt={user.name} />
                         ) : (
-                          <AvatarFallback>{initials}</AvatarFallback>
+                          <AvatarFallback className="bg-muted text-foreground">{initials}</AvatarFallback>
                         )}
                       </Avatar>
-                      <span className="hidden lg:inline text-sm font-medium text-muted-foreground group-hover:text-primary">
+                      <span className="hidden lg:inline text-sm font-medium text-foreground group-hover:text-primary">
                         {user.name}
                       </span>
                     </button>
@@ -124,14 +124,31 @@ const Navbar = () => {
               )}
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              className="md:hidden rounded-xl border border-border/40 bg-background/70 p-2 text-muted-foreground transition-colors duration-300 hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            {/* Mobile Actions */}
+            <div className="flex items-center gap-2 md:hidden">
+              {user && (
+                <button
+                  className="rounded-xl border border-border/40 bg-background/70 p-1.5 text-foreground transition-colors duration-300 hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                  onClick={() => navigate("/profile")}
+                  aria-label="Profile"
+                >
+                  <Avatar className="h-8 w-8 border border-border/50">
+                    {user.photoUrl ? (
+                      <AvatarImage src={user.photoUrl} alt={user.name} />
+                    ) : (
+                      <AvatarFallback className="bg-muted text-foreground">{initials}</AvatarFallback>
+                    )}
+                  </Avatar>
+                </button>
+              )}
+              <button
+                className="rounded-xl border border-border/40 bg-background/70 p-2 text-foreground transition-colors duration-300 hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                aria-label="Toggle menu"
+              >
+                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            </div>
           </div>
 
           {/* Mobile Navigation */}

@@ -5,8 +5,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trophy, Mail, Lock, User, IdCard } from "lucide-react";
+import { Trophy, Mail, Lock, User, IdCard, Eye, EyeOff } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+
+const collegesList = [
+  "CCI",
+  "CSSH",
+  "COBE",
+  "CAES",
+  "LAW",
+  "CHMS",
+  "CNCS",
+  "CVM",
+  "FRESH-NATURAL",
+  "FRESH-SOCIAL",
+  "HIT-IND",
+  "HIT-SRV",
+  "CEBS",
+];
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,7 +35,8 @@ const Auth = () => {
   const [department, setDepartment] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  
+  const [showPassword, setShowPassword] = useState(false);
+
   const { login, signup } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -45,6 +63,13 @@ const Auth = () => {
       return;
     }
 
+    // college must be selected (no typing) when signing up
+    if (!isLogin && college.trim() === "") {
+      setError("Please choose your college (required).");
+      setIsLoading(false);
+      return;
+    }
+
     if (!validateEmail(email)) {
       setError("Invalid email address.");
       setIsLoading(false);
@@ -65,7 +90,15 @@ const Auth = () => {
           description: "You've successfully logged in.",
         });
       } else {
-        await signup(email, password, name, "student", studentId.trim(), college.trim(), department.trim());
+        await signup(
+          email,
+          password,
+          name,
+          "student",
+          studentId.trim(),
+          college.trim(),
+          department.trim()
+        );
         toast({
           title: "Account created!",
           description: "Welcome to College League.",
@@ -114,8 +147,8 @@ const Auth = () => {
           <CardHeader>
             <CardTitle className="text-2xl">{isLogin ? "Welcome Back" : "Create Account"}</CardTitle>
             <CardDescription>
-              {isLogin 
-                ? "Enter your credentials to access your account" 
+              {isLogin
+                ? "Enter your credentials to access your account"
                 : "Join the college league community today"}
             </CardDescription>
           </CardHeader>
@@ -157,18 +190,22 @@ const Auth = () => {
                 </div>
               )}
 
-              {!isLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="college">College (optional)</Label>
-                  <Input
-                    id="college"
-                    type="text"
-                    placeholder="College of Agriculture"
-                    value={college}
-                    onChange={(e) => setCollege(e.target.value)}
-                  />
-                </div>
-              )}
+              {/* COLLEGE: dropdown only (no typing) */}
+              <div className="space-y-2">
+                <Label htmlFor="college">College {isLogin ? "(optional)" : <span className="text-destructive">*</span>}</Label>
+                <Select value={college || undefined} onValueChange={setCollege}>
+                  <SelectTrigger id="college">
+                    <SelectValue placeholder="Select your college" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {collegesList.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {!isLogin && (
                 <div className="space-y-2">
@@ -205,13 +242,22 @@ const Auth = () => {
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 pr-10"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -227,7 +273,12 @@ const Auth = () => {
                 {isLogin ? "Don't have an account? " : "Already have an account? "}
                 <button
                   type="button"
-                  onClick={() => setIsLogin(!isLogin)}
+                  onClick={() => {
+                    setError("");
+                    setIsLogin(!isLogin);
+                    // clear college selection when toggling back to signup to avoid stale state
+                    if (!isLogin) setCollege("");
+                  }}
                   className="text-primary hover:underline font-medium"
                 >
                   {isLogin ? "Sign up" : "Sign in"}

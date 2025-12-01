@@ -157,6 +157,13 @@ const AssignStudentToTeam = () => {
     return <div>No college information found. Please contact support.</div>;
   }
 
+  const assignedList = students.filter((s) => assignedStudents.has((s.uid || s.id || "")));
+  const notAssignedList = students.filter((s) => {
+    const keyId = (s.uid || s.id || "");
+    const isAssigned = assignedStudents.has(keyId);
+    return !isAssigned;
+  });
+
   return (
     <Card className="border-0 shadow-lg overflow-hidden">
       <CardHeader className="bg-gradient-to-r from-indigo-700 via-violet-600 to-fuchsia-600 text-white">
@@ -191,56 +198,47 @@ const AssignStudentToTeam = () => {
               </SelectContent>
             </Select>
           </div>
-
-          <div className="rounded-lg border shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-muted/40">
-                  <TableRow>
-                    <TableHead className="text-xs font-semibold uppercase tracking-wide">Name</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase tracking-wide">Email</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase tracking-wide">Department</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase tracking-wide">Status</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase tracking-wide">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {students.map((student) => {
-                    const keyId = (student.uid || student.id || "");
-                    const isAssigned = assignedStudents.has(keyId);
-                    return (
-                      <TableRow key={keyId} className="even:bg-muted/20 hover:bg-muted/40 transition-colors">
-                        <TableCell>
-                          <div className="font-medium">{student.displayName || student.name || 'No Name'}</div>
-                          <div className="text-xs text-muted-foreground">{keyId}</div>
-                        </TableCell>
-                        <TableCell className="text-sm">{student.email}</TableCell>
-                        <TableCell className="text-sm">{student.department || '-'}</TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ${
-                            isAssigned
-                              ? 'bg-violet-50 text-violet-700 ring-violet-200'
-                              : 'bg-slate-50 text-slate-700 ring-slate-200'
-                          }`}>
-                            {isAssigned ? 'Assigned' : 'Not Assigned'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            className={isAssigned ? 'border-rose-300 text-rose-600 hover:bg-rose-50' : 'bg-violet-600 hover:bg-violet-700'}
-                            variant={isAssigned ? 'outline' : 'default'}
-                            size="sm"
-                            onClick={async () => {
-                              if (!formData.teamId) {
-                                toast({
-                                  variant: 'destructive',
-                                  title: 'Select a team',
-                                  description: 'Please select a team first.'
-                                });
-                                return;
-                              }
-                              try {
-                                if (isAssigned) {
+          <div className="space-y-6">
+            <div className="rounded-lg border shadow-sm overflow-hidden">
+              <div className="px-4 py-3 font-semibold">Assigned Students</div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-muted/40">
+                    <TableRow>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide">Name</TableHead>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide">Email</TableHead>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide">Department</TableHead>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide">Year</TableHead>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {assignedList.map((student) => {
+                      const keyId = (student.uid || student.id || "");
+                      return (
+                        <TableRow key={keyId} className="even:bg-muted/20 hover:bg-muted/40 transition-colors">
+                          <TableCell>
+                            <div className="font-medium">{student.displayName || student.name || 'No Name'}</div>
+                            <div className="text-xs text-muted-foreground">{keyId}</div>
+                          </TableCell>
+                          <TableCell className="text-sm">{student.email}</TableCell>
+                          <TableCell className="text-sm">{student.department || '-'}</TableCell>
+                          <TableCell className="text-sm">{student.year || '-'}</TableCell>
+                          <TableCell>
+                            <Button
+                              className={'border-rose-300 text-rose-600 hover:bg-rose-50'}
+                              variant={'outline'}
+                              size="sm"
+                              onClick={async () => {
+                                if (!formData.teamId) {
+                                  toast({
+                                    variant: 'destructive',
+                                    title: 'Select a team',
+                                    description: 'Please select a team first.'
+                                  });
+                                  return;
+                                }
+                                try {
                                   const snap = await getDocs(query(
                                     collection(db, 'players'),
                                     where('teamId', '==', formData.teamId),
@@ -254,8 +252,70 @@ const AssignStudentToTeam = () => {
                                   next.delete(keyId);
                                   setAssignedStudents(next);
                                   toast({ title: 'Student unassigned' });
-                                } else {
-                                  const assignedBy = self?.uid || (self as any)?.id || (self as any)?.userId || auth.currentUser?.uid;
+                                } catch (err) {
+                                  console.error('Assignment toggle failed', err);
+                                  toast({ variant: 'destructive', title: 'Error', description: 'Failed to update assignment.' });
+                                }
+                              }}
+                              disabled={!formData.teamId}
+                            >
+                              Unassign
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {assignedList.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">No assigned students for the selected team</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            <div className="rounded-lg border shadow-sm overflow-hidden">
+              <div className="px-4 py-3 font-semibold">Not Assigned Students</div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-muted/40">
+                    <TableRow>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide">Name</TableHead>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide">Email</TableHead>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide">Department</TableHead>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide">Year</TableHead>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {notAssignedList.map((student) => {
+                      const keyId = (student.uid || student.id || "");
+                      return (
+                        <TableRow key={keyId} className="even:bg-muted/20 hover:bg-muted/40 transition-colors">
+                          <TableCell>
+                            <div className="font-medium">{student.displayName || student.name || 'No Name'}</div>
+                            <div className="text-xs text-muted-foreground">{keyId}</div>
+                          </TableCell>
+                          <TableCell className="text-sm">{student.email}</TableCell>
+                          <TableCell className="text-sm">{student.department || '-'}</TableCell>
+                          <TableCell className="text-sm">{student.year || '-'}</TableCell>
+                          <TableCell>
+                            <Button
+                              className={'bg-violet-600 hover:bg-violet-700'}
+                              variant={'default'}
+                              size="sm"
+                              onClick={async () => {
+                                if (!formData.teamId) {
+                                  toast({
+                                    variant: 'destructive',
+                                    title: 'Select a team',
+                                    description: 'Please select a team first.'
+                                  });
+                                  return;
+                                }
+                                try {
+                                  const assignedBy = self?.id || self?.userId || auth.currentUser?.uid;
                                   if (!assignedBy) {
                                     toast({ variant: 'destructive', title: 'Unable to assign', description: 'Missing current user id. Please re-login and try again.' });
                                     return;
@@ -277,22 +337,27 @@ const AssignStudentToTeam = () => {
                                   next.add(keyId);
                                   setAssignedStudents(next);
                                   toast({ title: 'Student assigned' });
+                                } catch (err) {
+                                  console.error('Assignment toggle failed', err);
+                                  toast({ variant: 'destructive', title: 'Error', description: 'Failed to update assignment.' });
                                 }
-                              } catch (err) {
-                                console.error('Assignment toggle failed', err);
-                                toast({ variant: 'destructive', title: 'Error', description: 'Failed to update assignment.' });
-                              }
-                            }}
-                            disabled={!formData.teamId}
-                          >
-                            {isAssigned ? 'Unassign' : 'Assign'}
-                          </Button>
-                        </TableCell>
+                              }}
+                              disabled={!formData.teamId}
+                            >
+                              Assign
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {notAssignedList.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">No unassigned students</TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </div>
         </form>
