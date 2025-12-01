@@ -10,6 +10,7 @@ import Standings from "./pages/Standings";
 import Blog from "./pages/Blog";
 import Vlog from "./pages/Vlog";
 import Auth from "./pages/Auth";
+import TeamDetails from "./pages/TeamDetails";
 import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -38,6 +39,7 @@ const App = () => (
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/teams" element={<Teams />} />
+        <Route path="/teams/:teamId" element={<TeamDetails />} />
         <Route path="/matches" element={<Matches />} />
         <Route path="/round-off" element={<RoundOff />} />
         <Route path="/standings" element={<Standings />} />

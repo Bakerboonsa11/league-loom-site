@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -165,6 +166,8 @@ const Teams = () => {
     return teams.slice().sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
   }, [teams, teamsSortedForDisplay]);
 
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -212,7 +215,11 @@ const Teams = () => {
                 return (
                   <Card
                     key={team.id}
-                    className="border-border hover:border-primary transition-all duration-300 bg-card/50 backdrop-blur hover:shadow-glow-primary"
+                    className="border-border hover:border-primary transition-all duration-300 bg-card/50 backdrop-blur hover:shadow-glow-primary cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/teams/${team.id}`)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/teams/${team.id}`); } }}
                   >
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between">
