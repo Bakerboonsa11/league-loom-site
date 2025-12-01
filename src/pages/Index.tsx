@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Users, Calendar, TrendingUp, Star, Quote, MapPin, ChevronUp, ChevronDown, Sparkles } from "lucide-react";
+import { Trophy, Users, Calendar, TrendingUp, Star, Quote, MapPin, ChevronUp, ChevronDown, Sparkles, Crown } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import heroBanner from "@/assets/hero-banner.jpg";
@@ -175,6 +175,8 @@ const Index = () => {
               awayLogo: team2?.logoUrl ?? null,
             } satisfies HighlightMatch;
           })
+          // Only show Live and Upcoming games in this section
+          .filter((m) => m.status === "Live" || m.status === "Upcoming")
           .sort((a, b) => {
             const statusOrder: Record<MatchStatus, number> = { Live: 0, Upcoming: 1, Finished: 2 };
             const statusDiff = statusOrder[a.status] - statusOrder[b.status];
@@ -486,6 +488,7 @@ const Index = () => {
       <Navbar />
       {/* Spacer to avoid overlap with fixed navbar */}
       <div className="h-14 md:h-16" />
+      
       {/* Hero Section */}
       <section className="relative pt-16 overflow-hidden">
         <div
@@ -522,15 +525,102 @@ const Index = () => {
           </div>
         </div>
       </section>
+      {/* Golden Boot Leaders (directly below Hero) */}
+      <section className="relative z-20 pt-0">
+        <div className="container mx-auto px-4">
+          <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-card/80 backdrop-blur shadow-[0_30px_80px_-40px_rgba(56,189,248,0.6)]">
+            <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-primary/20 blur-3xl" />
+            <div className="absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-accent/20 blur-3xl" />
+            <div className="relative px-5 sm:px-8 py-6 sm:py-8">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                    <Trophy className="h-3.5 w-3.5" />
+                    Golden Boot Leaders
+                  </span>
+                </div>
+                <Badge variant="secondary" className="hidden sm:inline">Live Season {new Date().getFullYear()}</Badge>
+              </div>
+              {rankedTopScorers.length === 0 ? (
+                <div className="mt-5">
+                  <Card className="max-w-3xl mx-auto border-dashed border-muted/60 bg-card/60 backdrop-blur">
+                    <CardContent className="py-8 text-center text-muted-foreground">No goals recorded yet.</CardContent>
+                  </Card>
+                </div>
+              ) : (
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {rankedTopScorers.slice(0, 3).map((scorer, index) => {
+                    const initials = scorer.scorerName
+                      .split(" ")
+                      .map((part) => part.charAt(0).toUpperCase())
+                      .slice(0, 2)
+                      .join("") || "U";
+                    const cardGlow = [
+                      "shadow-[0_22px_64px_-28px_rgba(56,189,248,0.75)]",
+                      "shadow-[0_22px_64px_-28px_rgba(168,85,247,0.6)]",
+                      "shadow-[0_22px_64px_-28px_rgba(16,185,129,0.6)]",
+                    ][index % 3];
+                    const gradient = [
+                      "from-primary/90 via-primary to-primary/60",
+                      "from-secondary/90 via-secondary to-secondary/60",
+                      "from-accent/90 via-accent to-accent/60",
+                    ][index % 3];
+                    return (
+                      <div
+                        key={scorer.scorerId}
+                        className={cn(
+                          "relative rounded-2xl border border-border/50 bg-background/70 backdrop-blur p-5 sm:p-6",
+                          "hover:border-primary/60 transition-all duration-300 hover:-translate-y-0.5",
+                          cardGlow,
+                        )}
+                      >
+                        <div className="pointer-events-none absolute inset-0 opacity-10 rounded-2xl bg-gradient-to-br" />
+                        <div className="relative flex items-center gap-5">
+                          <div className="text-center min-w-[64px]">
+                            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Rank</div>
+                            <div className="text-3xl font-black tracking-tight">#{scorer.rank}</div>
+                          </div>
+                          <div className="relative">
+                            <Avatar className="h-18 w-18 md:h-20 md:w-20 border-2 border-background/40 shadow-inner ring-2 ring-primary/30">
+                              {scorer.photoUrl ? (
+                                <AvatarImage src={scorer.photoUrl} alt={scorer.scorerName} />
+                              ) : (
+                              <AvatarFallback className="bg-muted/70 text-xl font-semibold text-foreground">{initials}</AvatarFallback>
+                              )}
+                            </Avatar>
+                            <span className="absolute -top-2 -right-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400 text-yellow-900 shadow ring-1 ring-yellow-500">
+                              <Crown className="h-3.5 w-3.5" />
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs text-muted-foreground">{scorer.goals} goals</div>
+                            <div className="font-semibold truncate text-base md:text-lg">{scorer.scorerName}</div>
+                            <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                              <div className={cn("h-full rounded-full bg-gradient-to-r", gradient, "relative")}
+                                   style={{ width: `${Math.max(20, Math.min(100, scorer.goals * 20))}%` }}>
+                                <span className="absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(255,255,255,.25),transparent)] animate-pulse/slow" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {/* Featured Matches - moved here right after Hero */}
+      {/* Featured Matches - after Golden Boot */}
+      {(isLoadingMatches || matchesError || matches.length > 0) && (
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4">This Week on Haramaya Courts</h2>
             <p className="text-muted-foreground text-lg">Catch the latest Hornet action lined up across our campuses.</p>
           </div>
-          
           {isLoadingMatches ? (
             <div className="max-w-4xl mx-auto">
               <Card className="border-dashed border-muted">
@@ -543,15 +633,7 @@ const Index = () => {
                 <CardContent className="py-8 text-center text-destructive">{matchesError}</CardContent>
               </Card>
             </div>
-          ) : matches.length === 0 ? (
-            <div className="max-w-4xl mx-auto">
-              <Card className="border-dashed border-muted">
-                <CardContent className="py-10 text-center text-muted-foreground">
-                  No fixtures scheduled yet. Check back as Haramaya teams publish their next clashes.
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
+          ) : matches.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {matches.map((match) => (
                 <Card key={match.id} className="border-border bg-card/70 backdrop-blur">
@@ -596,9 +678,11 @@ const Index = () => {
                 </Card>
               ))}
             </div>
-          )}
+          ) : null}
         </div>
       </section>
+      )}
+      
 
       {/* Live Look - ultra-styled card after Hero */}
       <div className="relative z-30 py-6">
@@ -683,86 +767,7 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Top Scorers */}
-      <section className="py-16 bg-gradient-to-b from-card/70 via-background to-background border-b border-border">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12 space-y-3">
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-              Golden Boot Leaders
-            </h2>
-            <p className="text-muted-foreground">Blink-and-you'll-miss-it finishers lighting up the league.</p>
-          </div>
-          {topScorers.length === 0 ? (
-            <Card className="max-w-3xl mx-auto border-dashed border-muted/60 bg-card/60 backdrop-blur">
-              <CardContent className="py-10 text-center text-muted-foreground">
-                No goals recorded yet.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="flex flex-col items-center sm:flex-row sm:items-stretch justify-center gap-6 max-w-5xl mx-auto">
-              {rankedTopScorers.map((scorer, index) => {
-                const initials = scorer.scorerName
-                  .split(" ")
-                  .map((part) => part.charAt(0).toUpperCase())
-                  .slice(0, 2)
-                  .join("") || "U";
-
-                const gradientClasses = [
-                  "from-primary/90 via-primary to-primary/60",
-                  "from-secondary/90 via-secondary to-secondary/60",
-                  "from-accent/90 via-accent to-accent/60",
-                ];
-
-                return (
-                  <div
-                    key={scorer.scorerId}
-                    className={cn(
-                      "relative flex-1 min-w-[220px] max-w-[260px] rounded-2xl border border-border/50 bg-card/80 backdrop-blur px-5 py-6",
-                      "shadow-[0_20px_45px_-25px_rgba(0,0,0,0.6)] hover:shadow-[0_20px_45px_-20px_rgba(0,0,0,0.7)] transition-shadow",
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "absolute inset-0 rounded-2xl opacity-10",
-                        "bg-gradient-to-br",
-                        gradientClasses[index % gradientClasses.length],
-                      )}
-                    />
-                    <div className="relative flex items-center gap-4">
-                      <div className="flex flex-col items-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        <span className="text-[0.65rem]">Rank</span>
-                        <span className="text-3xl font-black text-foreground">#{scorer.rank}</span>
-                      </div>
-                      <Avatar className="h-14 w-14 border-2 border-background/40 shadow-inner">
-                        {scorer.photoUrl ? (
-                          <AvatarImage src={scorer.photoUrl} alt={scorer.scorerName} />
-                        ) : (
-                          <AvatarFallback className="bg-muted/70 text-lg font-semibold text-foreground">
-                            {initials}
-                          </AvatarFallback>
-                        )}
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">{scorer.goals} goals</p>
-                        <p className="text-lg font-semibold text-foreground line-clamp-2">{scorer.scorerName}</p>
-                      </div>
-                    </div>
-                    <div className="relative mt-5 h-1 rounded-full bg-muted">
-                      <div
-                        className={cn(
-                          "h-full rounded-full bg-gradient-to-r",
-                          gradientClasses[index % gradientClasses.length],
-                        )}
-                        style={{ width: `${Math.max(20, Math.min(100, scorer.goals * 20))}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
+      
 
       {/* Stats Section */}
       <section className="relative py-16">
