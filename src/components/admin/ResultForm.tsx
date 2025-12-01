@@ -1,4 +1,5 @@
 import { useForm, useFieldArray } from "react-hook-form";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -100,6 +101,72 @@ const ResultForm = ({
     control: form.control,
     name: "redCards",
   });
+
+  // Load existing result to allow editing
+  // This fetches result doc, goals and cards and pre-fills the form
+  // Runs when dialog opens (gameId/collections change)
+  useEffect(() => {
+    let cancelled = false;
+    const loadExisting = async () => {
+      try {
+        const resultRef = doc(db, resultCollection, gameId);
+        const resultSnap = await getDoc(resultRef);
+        const goalsSnap = await getDocs(query(collection(db, goalsCollection), where("gameId", "==", gameId)));
+        const cardsSnap = await getDocs(query(collection(db, cardsCollection), where("gameId", "==", gameId)));
+
+        const existingGoals = goalsSnap.docs.map((d) => d.data() as any).map((g) => ({
+          team: (g.teamSide as "home" | "away") ?? "home",
+          scorerName: g.scorerName ?? "",
+          scorerId: g.scorerId ?? "",
+        }));
+
+        const yellowCards = cardsSnap.docs
+          .map((d) => d.data() as any)
+          .filter((c) => (c.cardType ?? "").toLowerCase() === "yellow")
+          .map((c) => ({
+            team: (c.teamSide as "home" | "away") ?? "home",
+            playerName: c.playerName ?? "",
+            playerId: c.playerId ?? "",
+          }));
+
+        const redCards = cardsSnap.docs
+          .map((d) => d.data() as any)
+          .filter((c) => (c.cardType ?? "").toLowerCase() === "red")
+          .map((c) => ({
+            team: (c.teamSide as "home" | "away") ?? "home",
+            playerName: c.playerName ?? "",
+            playerId: c.playerId ?? "",
+          }));
+
+        if (!cancelled) {
+          if (resultSnap.exists()) {
+            const data = resultSnap.data() as any;
+            form.reset({
+              homeScore: Number(data.homeScore ?? 0),
+              awayScore: Number(data.awayScore ?? 0),
+              goals: existingGoals,
+              yellowCards,
+              redCards,
+            });
+          } else {
+            form.reset({
+              homeScore: 0,
+              awayScore: 0,
+              goals: existingGoals,
+              yellowCards,
+              redCards,
+            });
+          }
+        }
+      } catch (e) {
+        // Silent: if loading fails, leave defaults
+      }
+    };
+    void loadExisting();
+    return () => {
+      cancelled = true;
+    };
+  }, [gameId, resultCollection, goalsCollection, cardsCollection]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const { goals, homeScore, awayScore, yellowCards, redCards } = values;

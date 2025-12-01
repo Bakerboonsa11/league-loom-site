@@ -267,9 +267,8 @@ const AdminGamesPage = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => setAddingResultGame(game)}
-                            disabled={game.status === 'Finished'}
                           >
-                            Add Result
+                            Add/Edit Result
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => setEditingGame(game)}>
                             Edit
@@ -369,9 +368,8 @@ const AdminGamesPage = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => setAddingUniqueResultGame(game)}
-                            disabled={game.status === "Finished"}
                           >
-                            Add Result
+                            Add/Edit Result
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => setEditingUniqueGame(game)}>
                             Edit
