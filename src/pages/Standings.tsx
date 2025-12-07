@@ -37,6 +37,7 @@ interface StandingRow {
   teamId: string;
   teamName: string;
   teamLogo?: string | null;
+  isRegistered: boolean;
   played: number;
   won: number;
   drawn: number;
@@ -110,6 +111,7 @@ const Standings = () => {
               teamId,
               teamName,
               teamLogo: teamInfo?.logoUrl ?? null,
+              isRegistered: !!teamInfo,
               played: 0,
               won: 0,
               drawn: 0,
@@ -142,6 +144,7 @@ const Standings = () => {
               teamId,
               teamName,
               teamLogo: teamInfo?.logoUrl ?? null,
+              isRegistered: !!teamInfo,
               played: 0,
               won: 0,
               drawn: 0,
@@ -150,6 +153,9 @@ const Standings = () => {
               ga: 0,
               gd: 0,
               points: 0,
+              yellowCards: 0,
+              redCards: 0,
+              fairPlay: 0,
             };
           }
           return container.rows[teamId];
@@ -164,6 +170,7 @@ const Standings = () => {
               teamId,
               teamName,
               teamLogo: teamInfo?.logoUrl ?? null,
+              isRegistered: !!teamInfo,
               played: 0,
               won: 0,
               drawn: 0,
@@ -266,14 +273,14 @@ const Standings = () => {
           });
         });
 
-        const overallRowsArray = sortRows(Object.values(overallRows));
+        const overallRowsArray = sortRows(Object.values(overallRows)).filter((r) => r.isRegistered);
 
         const computedStandings: GroupStanding[] = Object.values(groupStandingsMap)
           .map(({ meta, rows }) => ({
             groupId: meta.id,
             groupName: meta.name,
             description: meta.description ?? undefined,
-            rows: sortRows(Object.values(rows)),
+            rows: sortRows(Object.values(rows)).filter((r) => r.isRegistered),
           }))
           .filter((group) => group.rows.length > 0);
 
@@ -396,8 +403,8 @@ const Standings = () => {
                       >
                         <div className="grid md:grid-cols-11 md:gap-4 items-center gap-3">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-lg">{rank}</span>
-                            {rank === 1 && <Trophy className="w-5 h-5 text-secondary" />}
+                            <span className="font-bold text-lg">{team.isRegistered ? rank : '-'}</span>
+                            {team.isRegistered && rank === 1 && <Trophy className="w-5 h-5 text-secondary" />}
                           </div>
                           <div className="md:col-span-2 flex items-center gap-3 font-semibold">
                             {team.teamLogo ? (

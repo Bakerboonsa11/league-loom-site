@@ -224,14 +224,14 @@ const TableRankPage = () => {
           groupId: meta.id,
           groupName: meta.name,
           description: meta.description ?? undefined,
-          rows: sortRows(Object.values(rows)),
+          rows: sortRows(Object.values(rows)).filter(r => teamMap.has(r.teamId)),
         }));
 
         if (Object.keys(ungroupedRows).length > 0) {
           computedStandings.push({
             groupId: "__ungrouped",
             groupName: "Ungrouped Matches",
-            rows: sortRows(Object.values(ungroupedRows)),
+            rows: sortRows(Object.values(ungroupedRows)).filter(r => teamMap.has(r.teamId)),
           });
         }
 

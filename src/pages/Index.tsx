@@ -265,7 +265,6 @@ const Index = () => {
             if (diff !== 0) return diff;
             return a.scorerName.localeCompare(b.scorerName);
           })
-          .slice(0, 3)
           .map((scorer) => ({
             ...scorer,
             photoUrl: scorer.photoUrl ?? photoMap.get(scorer.scorerId),
@@ -378,6 +377,13 @@ const Index = () => {
       return { ...s, rank } as RankedScorer;
     });
   }, [topScorers]);
+
+  const topScorersWithTies = useMemo(() => {
+    if (rankedTopScorers.length === 0) return [];
+    const thirdIdx = Math.min(2, rankedTopScorers.length - 1);
+    const threshold = rankedTopScorers[thirdIdx].goals;
+    return rankedTopScorers.filter((s) => s.goals >= threshold);
+  }, [rankedTopScorers]);
 
   const galleryImages = [
     {
@@ -621,7 +627,7 @@ const Index = () => {
                 </div>
               ) : (
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {rankedTopScorers.slice(0, 3).map((scorer, index) => {
+                  {topScorersWithTies.map((scorer, index) => {
                     const initials = scorer.scorerName
                       .split(" ")
                       .map((part) => part.charAt(0).toUpperCase())
